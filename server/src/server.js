@@ -1,16 +1,14 @@
-import Fastify from 'fastify'
+import { loadConfig } from './config.js'
 import { openDb } from './db.js'
+import { buildApp } from './app.js'
 
-const app = Fastify({ logger: true })
-const db = openDb(process.env.DB_FILE ?? 'blog.db')
+const config = loadConfig()
+const db = openDb(config.dbFile)
+const app = buildApp({ db, nodeEnv: config.nodeEnv })
 
-app.get('/health', async () => {
-  const tables = db
-    .prepare(
-      "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
-    )
-    .all()
-  return { status: 'ok', tables: tables.map((t) => t.name) }
-})
-
-await app.listen({ port: 3000 })
+try {
+  await app.listen({ port: config.port, host: '0.0.0.0' })
+} catch (err) {
+  app.log.error(err)
+  process.exit(1)
+}

@@ -8,7 +8,8 @@
   },
   "scripts": {
     "test": "node --test",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch --env-file=.env src/server.js",
+    "start": "node src/server.js"
   },
   "keywords": [],
   "author": "",
@@ -16,6 +17,7 @@
   "type": "module",
   "dependencies": {
     "better-sqlite3": "^13.0.3",
-    "fastify": "^5.12.5"
+    "fastify": "^5.12.5",
+    "fastify-plugin": "^6.0.0"
   }
 }
