@@ -10,13 +10,23 @@ before(async () => {
 
 beforeEach(async () => {
   await resetDb(db)
-  await db.query(`INSERT INTO users (email, password_hash) VALUES ('moi@exemple.com', 'hash-bidon')`)
-  await db.query(`
-    INSERT INTO articles (title, slug, content_md, status, published_at, author_id)
-    VALUES ('Mon premier TP', 'mon-premier-tp', '# Bonjour', 'published', now(), 1)
-  `)
-  await db.query(`INSERT INTO tags (name, slug) VALUES ('fastify', 'fastify')`)
-  await db.query(`INSERT INTO article_tags (article_id, tag_id) VALUES (1, 1)`)
+  const client = await db.connect()
+  try {
+    await client.query('BEGIN')
+    await client.query(`INSERT INTO users (email, password_hash) VALUES ('moi@exemple.com', 'hash-bidon')`)
+    await client.query(`
+      INSERT INTO articles (title, slug, content_md, status, published_at, author_id)
+      VALUES ('Mon premier TP', 'mon-premier-tp', '# Bonjour', 'published', now(), 1)
+    `)
+    await client.query(`INSERT INTO tags (name, slug) VALUES ('fastify', 'fastify')`)
+    await client.query(`INSERT INTO article_tags (article_id, tag_id) VALUES (1, 1)`)
+    await client.query('COMMIT')
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
+  }
 })
 
 after(async () => {
@@ -34,8 +44,7 @@ const casRefuses = [
     `INSERT INTO articles (title, slug, content_md, author_id) VALUES ('t', 'Mon-Slug', 'c', 1)`, '23514'],
   ['article publié sans date',
     `INSERT INTO articles (title, slug, content_md, status, author_id) VALUES ('t', 'b', 'c', 'published', 1)`, '23514'],
-  ["suppression d'un utilisateur qui a des articles",
-    `DELETE FROM users WHERE id = 1`, '23001'],
+ 
 ]
 
 for (const [nom, sql, codeAttendu] of casRefuses) {
@@ -46,6 +55,16 @@ for (const [nom, sql, codeAttendu] of casRefuses) {
     })
   })
 }
+
+ test("refuse : suppression d'un utilisateur qui a des articles", async () => {
+  await assert.rejects(() => db.query('DELETE FROM users WHERE id = 1'), (err) => {
+    assert.ok(
+      ['23001', '23503'].includes(err.code),
+      `attendu 23001 ou 23503, reçu ${err.code}: ${err.message}`
+    )
+    return true
+  })
+})
 
 test('supprimer un article supprime ses liens avec les tags', async () => {
   await db.query('DELETE FROM articles WHERE id = 1')
