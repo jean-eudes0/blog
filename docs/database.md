@@ -1,6 +1,6 @@
 # Base de données
 
-Base SQLite du blog. Le schéma exécutable est dans `schema.sql`.
+Base PostgreSQL du blog (Neon ou Supabase). Le schéma exécutable est dans `server/migrations/`.
 
 ## Diagramme entité-relation
 
@@ -12,10 +12,10 @@ erDiagram
 
     users {
         INTEGER id PK
-        TEXT email UK "NOT NULL, insensible à la casse"
+        CITEXT email UK "NOT NULL, insensible à la casse nativement"
         TEXT password_hash "NOT NULL, bcrypt"
         TEXT role "admin | author, défaut admin"
-        TEXT created_at "ISO 8601 UTC"
+        TIMESTAMPTZ created_at "géré par la base (now())"
     }
 
     articles {
@@ -26,9 +26,9 @@ erDiagram
         TEXT content_md "Markdown brut"
         TEXT cover_url "nullable"
         TEXT status "draft | published"
-        TEXT published_at "NULL si brouillon, obligatoire si publié"
-        TEXT created_at "ISO 8601 UTC"
-        TEXT updated_at "mis à jour par le code"
+        TIMESTAMPTZ published_at "NULL tant que jamais publié ; conservée après dépublication"
+        TIMESTAMPTZ created_at "géré par la base (now())"
+        TIMESTAMPTZ updated_at "mis à jour par le code applicatif"
         INTEGER author_id FK "ON DELETE RESTRICT"
     }
 
@@ -57,7 +57,7 @@ erDiagram
 |---|---|
 | `articles(slug)` UNIQUE | Retrouver un article depuis son URL |
 | `articles(status, published_at DESC)` | Page d'accueil : articles publiés, du plus récent au plus ancien |
-| `article_tags(article_id, tag_id)` PK | Tags d'un article |
+| `article_tags(article_id, tag_id)` PK (clé primaire, index automatique) | Tags d'un article |
 | `article_tags(tag_id)` | Articles d'un tag (filtre V1.5) |
 
 ## Décisions de conception
@@ -66,6 +66,7 @@ erDiagram
 - **`published_at` distinct de `created_at`.** La date affichée est celle de la publication, pas celle du premier brouillon.
 - **Slug stable.** Généré à la création, il ne change plus après publication, pour ne pas casser les liens partagés.
 - **Contraintes dans la base.** Les `CHECK`, `UNIQUE`, `NOT NULL` et clés étrangères protègent les données même si le code applicatif contient un bug. Exemples : un article publié doit avoir une `published_at`, un slug est toujours en minuscules, et un email est unique sans tenir compte de la casse.
-- **Dates en texte ISO 8601 UTC.** SQLite n'a pas de type date ; ce format se trie correctement.
+- **Dates en `TIMESTAMPTZ`.** PostgreSQL gère nativement les dates avec fuseau horaire ; on les compare et on les trie sans conversion.
 - **Colonne `role` prévue dès la V1** (un seul rôle utilisé) pour éviter une migration lors de l'ajout des auteurs.
-- **Sessions hors de ce schéma.** Choix reporté à la conception de l'API.
+- **Sessions hors de ce schéma initial.** Ajoutées dans `002_sessions.sql`.
+- **`CITEXT` plutôt qu'un index insensible à la casse.** PostgreSQL gère nativement l'insensibilité à la casse sur `email` via l'extension `citext`, supportée par Neon et Supabase.
