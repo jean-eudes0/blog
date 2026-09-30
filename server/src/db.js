@@ -1,31 +1,60 @@
-import Database from 'better-sqlite3'
+import pg from 'pg'
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+const { Pool } = pg
 const dossier = path.dirname(fileURLToPath(import.meta.url))
 const dossierMigrations = path.join(dossier, '..', 'migrations')
 
-export function openDb(fichier = 'blog.db') {
-  const db = new Database(fichier)
-  db.pragma('foreign_keys = ON')
-  migrer(db)
-  return db
+export async function openDb(connectionString) {
+  const { hostname } = new URL(connectionString)
+  const estLocal = hostname === 'localhost' || hostname === '127.0.0.1'
+  const pool = new Pool({
+    connectionString,
+    // Neon et Supabase exigent TLS ; un Postgres local (développement, tests) n'en a pas besoin.
+    ssl: estLocal ? false : { rejectUnauthorized: false },
+    connectionTimeoutMillis: 10_000,
+    idleTimeoutMillis: 30_000,
+  })
+  await migrer(pool)
+  return pool
 }
 
-function migrer(db) {
+async function migrer(pool) {
+  await pool.query(`CREATE EXTENSION IF NOT EXISTS citext`)
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      filename   TEXT PRIMARY KEY,
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `)
+
+  const { rows } = await pool.query('SELECT filename FROM schema_migrations')
+  const dejaAppliquees = new Set(rows.map((r) => r.filename))
+
   const fichiers = readdirSync(dossierMigrations)
     .filter((f) => f.endsWith('.sql'))
     .sort()
-  const versionActuelle = db.pragma('user_version', { simple: true })
 
-  fichiers.forEach((fichier, i) => {
-    const version = i + 1
-    if (version <= versionActuelle) return
-    db.transaction(() => {
-      db.exec(readFileSync(path.join(dossierMigrations, fichier), 'utf8'))
-      db.pragma(`user_version = ${version}`)
-    })()
-    console.log(`Migration appliquée : ${fichier}`)
-  })
+  for (const fichier of fichiers) {
+    if (dejaAppliquees.has(fichier)) continue
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
+      await client.query(
+        readFileSync(path.join(dossierMigrations, fichier), 'utf8')
+      )
+      await client.query(
+        'INSERT INTO schema_migrations (filename) VALUES ($1)', [fichier]
+      )
+      await client.query('COMMIT')
+    } catch (err) {
+      await client.query('ROLLBACK')
+      throw err
+    } finally {
+      client.release()
+    }
+  }
 }

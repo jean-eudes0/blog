@@ -1,8 +1,3 @@
-// Lit et valide la configuration depuis les variables d'environnement.
-// Le serveur refuse de démarrer si quelque chose d'important manque ou
-// est invalide : mieux vaut planter ici, avec un message clair, plutôt
-// que plus tard avec une erreur obscure.
-
 function entierPositif(valeur, nomVariable, defaut) {
   if (valeur === undefined) return defaut
   const n = Number(valeur)
@@ -19,9 +14,16 @@ export function loadConfig(env = process.env) {
   }
 
   const port = entierPositif(env.PORT, 'PORT', 3000)
-  const dbFile = env.DB_FILE ?? (nodeEnv === 'production' ? undefined : 'blog.db')
-  if (!dbFile) {
-    throw new Error('DB_FILE est obligatoire en production')
+
+  const databaseUrl = env.DATABASE_URL
+  if (!databaseUrl) {
+    throw new Error(
+      'DATABASE_URL est obligatoire (ex: postgresql://user:pass@host/dbname). ' +
+        'Neon et Supabase la fournissent dans leur tableau de bord.'
+    )
+  }
+  if (!/^postgres(ql)?:\/\//.test(databaseUrl)) {
+    throw new Error(`DATABASE_URL ne ressemble pas à une URL PostgreSQL: "${databaseUrl}"`)
   }
 
   const publicUrl = env.PUBLIC_URL ?? (nodeEnv === 'production' ? undefined : 'http://localhost:5173')
@@ -34,5 +36,5 @@ export function loadConfig(env = process.env) {
     throw new Error(`PUBLIC_URL n'est pas une URL valide: "${publicUrl}"`)
   }
 
-  return { nodeEnv, port, dbFile, publicUrl }
+  return { nodeEnv, port, databaseUrl, publicUrl }
 }
