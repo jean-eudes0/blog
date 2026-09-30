@@ -6,11 +6,11 @@
   "directories": {
     "test": "tests"
   },
-  "scripts": {
-    "test": "node --env-file=.env.test --test",
-    "dev": "node --watch --env-file=.env src/server.js",
-    "start": "node  src/server.js"
-  },
+ "scripts": {
+  "test": "node --env-file-if-exists=.env.test --test",
+  "dev": "node --watch --env-file=.env src/server.js",
+  "start": "node src/server.js"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
