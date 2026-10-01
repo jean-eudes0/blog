@@ -12,7 +12,7 @@ erDiagram
 
     users {
         INTEGER id PK
-        CITEXT email UK "NOT NULL, insensible à la casse nativement"
+        TEXT email UK "NOT NULL, unicité via lower(email)"
         TEXT password_hash "NOT NULL, bcrypt"
         TEXT role "admin | author, défaut admin"
         TIMESTAMPTZ created_at "géré par la base (now())"
@@ -69,4 +69,7 @@ erDiagram
 - **Dates en `TIMESTAMPTZ`.** PostgreSQL gère nativement les dates avec fuseau horaire ; on les compare et on les trie sans conversion.
 - **Colonne `role` prévue dès la V1** (un seul rôle utilisé) pour éviter une migration lors de l'ajout des auteurs.
 - **Sessions hors de ce schéma initial.** Ajoutées dans `002_sessions.sql`.
-- **`CITEXT` plutôt qu'un index insensible à la casse.** PostgreSQL gère nativement l'insensibilité à la casse sur `email` via l'extension `citext`, supportée par Neon et Supabase.
+- **Index fonctionnel sur `lower(email)` plutôt que `CITEXT`.** L'extension `citext` 
+  n'est pas disponible sur toutes les images PostgreSQL. On utilise à la place un 
+  index `UNIQUE` sur `lower(email)` et une contrainte `CHECK (email = lower(email))` 
+  pour garantir l'unicité insensible à la casse sans dépendance d'extension.
