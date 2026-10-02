@@ -166,3 +166,17 @@ test('GET /api/tags ne compte que les articles publiés', async () => {
   assert.equal(fastify.articleCount, 2)
   assert.equal(body.data.find((t) => t.slug === 'secret'), undefined)
 })
+
+test('GET /api/articles avec une page démesurée renvoie 400, pas 500', async () => {
+  const res = await app.inject({ method: 'GET', url: '/api/articles?page=99999999999999999999' })
+  assert.equal(res.statusCode, 400)
+  assert.equal(res.json().error.code, 'VALIDATION_ERROR')
+})
+
+test('un slug démesuré répond au format du §5, sans code interne de Fastify', async () => {
+  const res = await app.inject({ method: 'GET', url: '/api/articles/' + 'a'.repeat(100000) })
+  assert.equal(res.statusCode, 414)
+  const body = res.json()
+  assert.equal(body.error.code, 'VALIDATION_ERROR')
+  assert.ok(!JSON.stringify(body).includes('FST_'))
+})

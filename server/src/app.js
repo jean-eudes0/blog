@@ -17,6 +17,11 @@ export function buildApp({ db, nodeEnv = 'development' } = {}) {
     // les refuser. Avec false, additionalProperties: false renvoie bien un 400
     // (voir docs/api.md §6).
     ajv: { customOptions: { removeAdditional: false } },
+    frameworkErrors: (err, request, reply) => {
+      reply.code(err.statusCode ?? 400).send({
+        error: { code: 'VALIDATION_ERROR', message: 'Requête invalide' },
+      })
+    },
   })
 
   app.decorate('db', db)

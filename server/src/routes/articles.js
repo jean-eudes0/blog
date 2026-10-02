@@ -52,7 +52,7 @@ export default async function articlesRoutes(app) {
           type: 'object',
           additionalProperties: false,
           properties: {
-            page: { type: 'integer', minimum: 1, default: 1 },
+            page: { type: 'integer', minimum: 1, maximum: 100000, default: 1 },
             limit: { type: 'integer', minimum: 1, maximum: 50, default: 10 },
           },
         },
