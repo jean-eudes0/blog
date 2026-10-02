@@ -30,7 +30,7 @@ beforeEach(async () => {
 })
 
 after(async () => {
-  await db.end()
+  if (db) await db.end()
 })
 
 const casRefuses = [

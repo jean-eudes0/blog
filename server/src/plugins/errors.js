@@ -33,8 +33,16 @@ export default fp(async function errorsPlugin(app) {
       return;
     }
 
-    if (err.statusCode && err.statusCode < 500 && err.code) {
-      envoyerErreur(reply, err.statusCode, err.code, err.message);
+    if (err.statusCode && err.statusCode < 500) {
+      // Nos propres erreurs métier portent un code (ex: NOT_FOUND).
+      const aUnCodeMetier = err.code && !String(err.code).startsWith("FST_");
+      if (aUnCodeMetier) {
+        envoyerErreur(reply, err.statusCode, err.code, err.message);
+        return;
+      }
+      // Erreurs internes de Fastify (JSON mal formé, corps trop gros...) :
+      // on ne laisse pas fuiter leur code ni leur message en anglais.
+      envoyerErreur(reply, err.statusCode, "VALIDATION_ERROR", "Requête invalide");
       return;
     }
 

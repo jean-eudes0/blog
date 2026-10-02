@@ -36,7 +36,7 @@ Chaque étape livre quelque chose qui marche de bout en bout, se vérifie à la 
 ## Détail de l'étape 1
 
 **À produire :**
-- `src/config.js` : lit `PORT`, `DB_FILE`, `PUBLIC_URL`, `NODE_ENV` depuis l'environnement, refuse de démarrer avec un message clair si une valeur est invalide ; `.env.example` fourni
+- `src/config.js` : lit `PORT`, `DATABASE_URL`, `PUBLIC_URL`, `NODE_ENV` depuis l'environnement, refuse de démarrer avec un message clair si une valeur est invalide ; `.env.example` fourni
 - `src/app.js` : exporte `buildApp({ db })`, construit l'application sans écouter de port
 - `src/server.js` : lit la config, ouvre la base, appelle `buildApp`, écoute (`node src/server.js`, sans `--env-file` en production)
 - `src/plugins/errors.js` : gestionnaire d'erreurs et de route inconnue au format défini dans `docs/api.md` (§5)

@@ -21,7 +21,7 @@ erDiagram
     articles {
         INTEGER id PK
         TEXT title "NOT NULL"
-        TEXT slug UK "NOT NULL, minuscules, figé après publication"
+        TEXT slug UK "NOT NULL, minuscules, figé dès la création"
         TEXT excerpt "défaut vide"
         TEXT content_md "Markdown brut"
         TEXT cover_url "nullable"
@@ -41,6 +41,15 @@ erDiagram
     article_tags {
         INTEGER article_id PK, FK "ON DELETE CASCADE"
         INTEGER tag_id PK, FK "ON DELETE CASCADE"
+    }
+
+        users ||--o{ sessions : "ouvre"
+
+    sessions {
+        TEXT id PK "empreinte SHA-256 du jeton"
+        INTEGER user_id FK "ON DELETE CASCADE"
+        TIMESTAMPTZ created_at "géré par la base (now())"
+        TIMESTAMPTZ expires_at "NOT NULL"
     }
 ```
 
@@ -71,5 +80,4 @@ erDiagram
 - **Sessions hors de ce schéma initial.** Ajoutées dans `002_sessions.sql`.
 - **Index fonctionnel sur `lower(email)` plutôt que `CITEXT`.** L'extension `citext` 
   n'est pas disponible sur toutes les images PostgreSQL. On utilise à la place un 
-  index `UNIQUE` sur `lower(email)` et une contrainte `CHECK (email = lower(email))` 
-  pour garantir l'unicité insensible à la casse sans dépendance d'extension.
+  index `UNIQUE` sur `lower(email)`,  sans dépendance d'extension.

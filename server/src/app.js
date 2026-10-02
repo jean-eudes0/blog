@@ -1,5 +1,7 @@
 import Fastify from 'fastify'
 import errorsPlugin from './plugins/errors.js'
+import articlesRoutes from './routes/articles.js'
+import tagsRoutes from './routes/tags.js'
 
 export function buildApp({ db, nodeEnv = 'development' } = {}) {
   const app = Fastify({
@@ -11,19 +13,23 @@ export function buildApp({ db, nodeEnv = 'development' } = {}) {
       },
     },
     bodyLimit: 512 * 1024,
+    // Par défaut Fastify SUPPRIME en silence les champs en trop au lieu de
+    // les refuser. Avec false, additionalProperties: false renvoie bien un 400
+    // (voir docs/api.md §6).
+    ajv: { customOptions: { removeAdditional: false } },
   })
 
   app.decorate('db', db)
   app.register(errorsPlugin)
 
+  // Vérifie seulement que la base répond, sans rien révéler de son contenu.
   app.get('/api/health', async () => {
-    const { rows } = await app.db.query(
-      `SELECT count(*)::int AS count
-       FROM information_schema.tables
-       WHERE table_schema = 'public' AND table_name != 'schema_migrations'`
-    )
-    return { status: 'ok', tables: rows[0].count }
+    await app.db.query('SELECT 1')
+    return { status: 'ok' }
   })
+
+  app.register(articlesRoutes)
+  app.register(tagsRoutes)
 
   if (nodeEnv === 'test') {
     app.get('/api/_boom', async () => {

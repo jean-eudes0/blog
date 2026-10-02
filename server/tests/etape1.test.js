@@ -16,15 +16,14 @@ beforeEach(async () => {
 })
 
 after(async () => {
+  if (app) await app.close()
   if (db) await db.end()
 })
 
-test('GET /api/health répond 200 avec le nombre de tables applicatives', async () => {
+test('GET /api/health répond 200 sans révéler le contenu de la base', async () => {
   const res = await app.inject({ method: 'GET', url: '/api/health' })
   assert.equal(res.statusCode, 200)
-  const body = res.json()
-  assert.equal(body.status, 'ok')
-  assert.equal(body.tables, 5) // users, articles, tags, article_tags, sessions
+  assert.deepEqual(res.json(), { status: 'ok' })
 })
 
 test('une route inconnue répond 404 au format JSON attendu', async () => {
@@ -53,4 +52,17 @@ test('un corps valide selon le schéma est accepté', async () => {
   const res = await app.inject({ method: 'POST', url: '/api/_echo', payload: { nom: 'Malyd' } })
   assert.equal(res.statusCode, 200)
   assert.equal(res.json().nom, 'Malyd')
+})
+
+test('un JSON mal formé répond 400 au format du §5, sans code interne de Fastify', async () => {
+  const res = await app.inject({
+    method: 'POST',
+    url: '/api/_echo',
+    headers: { 'content-type': 'application/json' },
+    payload: '{pas du json',
+  })
+  assert.equal(res.statusCode, 400)
+  const body = res.json()
+  assert.equal(body.error.code, 'VALIDATION_ERROR')
+  assert.ok(!JSON.stringify(body).includes('FST_'))
 })
