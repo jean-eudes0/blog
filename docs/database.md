@@ -79,5 +79,4 @@ erDiagram
 - **Colonne `role` prévue dès la V1** (un seul rôle utilisé) pour éviter une migration lors de l'ajout des auteurs.
 - **Sessions hors de ce schéma initial.** Ajoutées dans `002_sessions.sql`.
 - **Index fonctionnel sur `lower(email)` plutôt que `CITEXT`.** L'extension `citext` 
-  n'est pas disponible sur toutes les images PostgreSQL. On utilise à la place un 
-  index `UNIQUE` sur `lower(email)`,  sans dépendance d'extension.
+  n'est pas disponible sur toutes les images PostgreSQL. On utilise à la place un index `UNIQUE` sur `lower(email)`,  sans dépendance d'extension.

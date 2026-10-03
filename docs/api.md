@@ -217,17 +217,22 @@ Des **actions** plutôt qu'un champ `status` modifiable, parce que le serveur do
 
 ## 5. Erreurs
 
-Un seul format, produit par un gestionnaire d'erreurs central :
+Un seul format, produit par un gestionnaire d'erreurs central. Le code HTTP (parexemple `400`) est dans la ligne de statut de la réponse, pas dans le corps 
 
 ```json
 {
   "error": {
-    "code": "VALIDATION_ERROR",
+    "code": "VALIDATION_ERROR",  
     "message": "Données invalides",
     "details": [{ "field": "title", "message": "Le titre est obligatoire" }]
   }
 }
 ```
+-`details` n'apparaît que pour les erreurs de validation d'un schéma (champ manquant, type ou valeur invalide). 
+- Les `message` de `details` viennent de la bibliothèque de validation (Ajv)
+ et sont ** en anglais ** pour l'instant.
+- Une requête mal formée avant même la validation (Json invalide, corps ou URL trop longs) renvoie `VALIDATION_ERROR` avec le message `Requête invalide`, sans `details`.
+
 
 | HTTP | `code` | Quand |
 |---|---|---|
@@ -335,7 +340,7 @@ Deux points qui comptent :
 1. **`app.js` construit l'application et `server.js` la lance**.
 2. **Un plugin qui définit un gestionnaire d'erreurs ou un hook global doit être enveloppé dans `fastify-plugin`.** Sinon Fastify l'encapsule : le gestionnaire ne s'applique qu'à l'intérieur du plugin, et les routes du reste de l'application gardent la réponse d'erreur par défaut (vérifié : sans `fastify-plugin`, une exception renvoie le format Fastify et non le nôtre).
 
-Premier point, en détail : **`app.js` construit l'application et `server.js` la lance**. Les tests appellent `buildApp({ db })` avec une base en mémoire et envoient des requêtes avec `app.inject()`, sans ouvrir de port ni dépendre de l'état d'une vraie base.
+Premier point, en détail : **`app.js` construit l'application et `server.js` la lance**. Les tests appellent `buildApp({ db })` avec une base PostgreSQL de test et envoient des requêtes avec `app.inject()`, sans ouvrir de port ni dépendre de l'état d'une vraie base.
 
 Dépendances à ajouter : `fastify-plugin` (dès l'étape 1), puis `@fastify/cookie`, `@fastify/static`, `@fastify/helmet`, `@fastify/rate-limit`, `bcrypt` (ou `bcryptjs` si l'installation native pose problème).
 

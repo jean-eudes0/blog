@@ -75,5 +75,6 @@ Tests : ils ont besoin d'une base PostgreSQL de test (elle est vidée à chaque 
 ```bash
 npm test
 ```
+La base de test est vidée à chaque `npm test` : `server/.env.test` doit pointer vers une base PostgreSQL locale, jamais vers ta base de développement ou de production.
 
 Routes disponibles pour l'instant : `GET /api/health`, `GET /api/articles`, `GET /api/articles/:slug`, `GET /api/tags`.

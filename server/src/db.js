@@ -8,7 +8,6 @@ const dossier = path.dirname(fileURLToPath(import.meta.url))
 const dossierMigrations = path.join(dossier, '..', 'migrations')
 
 // Identifiant arbitraire pour le verrou consultatif PostgreSQL (voir migrer()).
-// N'importe quel entier 64 bits fixe convient, du moment qu'il est stable.
 const VERROU_MIGRATIONS = 727384
 
 export async function openDb(connectionString) {
@@ -17,7 +16,7 @@ export async function openDb(connectionString) {
   const pool = new Pool({
     connectionString,
     ssl: estLocal ? false : { rejectUnauthorized: false },
-    connectionTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 30_000,
     idleTimeoutMillis: 30_000,
   })
 
@@ -39,8 +38,7 @@ async function migrer(pool) {
     // Verrou consultatif de TRANSACTION : il empêche deux processus
     // d'appliquer les migrations en même temps (fichiers de test en
     // parallèle, deux instances qui démarrent ensemble) et il est libéré
-    // tout seul au COMMIT ou au ROLLBACK. Contrairement à un verrou de
-    // session, il reste correct derrière un pooler de connexions.
+    // tout seul au COMMIT ou au ROLLBACK, sans unlock manuel à oublier.
     await client.query('SELECT pg_advisory_xact_lock($1)', [VERROU_MIGRATIONS])
 
     await client.query(`

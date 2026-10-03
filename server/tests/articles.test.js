@@ -180,3 +180,9 @@ test('un slug démesuré répond au format du §5, sans code interne de Fastify'
   assert.equal(body.error.code, 'VALIDATION_ERROR')
   assert.ok(!JSON.stringify(body).includes('FST_'))
 })
+
+test('un paramètre inconnu est nommé dans le détail de l\'erreur', async () => {
+  const res = await app.inject({ method: 'GET', url: '/api/articles?foo=1' })
+  assert.equal(res.statusCode, 400)
+  assert.ok(res.json().error.details.some((d) => d.field === 'foo'))
+})
