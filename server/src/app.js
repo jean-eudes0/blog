@@ -2,6 +2,7 @@ import Fastify from 'fastify'
 import errorsPlugin from './plugins/errors.js'
 import articlesRoutes from './routes/articles.js'
 import tagsRoutes from './routes/tags.js'
+import authPlugin from './plugins/auth.js'
 
 export function buildApp({ db, nodeEnv = 'development' } = {}) {
   const app = Fastify({
@@ -26,6 +27,7 @@ export function buildApp({ db, nodeEnv = 'development' } = {}) {
 
   app.decorate('db', db)
   app.register(errorsPlugin)
+  app.register(authPlugin, { secure: nodeEnv === 'production' })
 
   // Vérifie seulement que la base répond, sans rien révéler de son contenu.
   app.get('/api/health', async () => {

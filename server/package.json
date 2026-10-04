@@ -10,12 +10,16 @@
     "test": "node --env-file-if-exists=.env.test --test --test-concurrency=1",
     "dev": "node --watch --env-file=.env src/server.js",
     "start": "node src/server.js",
-    "seed": "node --env-file=.env scripts/seed-demo.js"
+    "seed": "node --env-file=.env scripts/seed-demo.js",
+    "create-admin": "node --env-file=.env scripts/create-admin.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@fastify/cookie": "^11.1.2",
+    "@fastify/rate-limit": "^11.2.0",
+    "bcryptjs": "^3.0.3",
     "fastify": "^5.12.5",
     "fastify-plugin": "^6.0.0",
     "pg": "^8.23.0"
