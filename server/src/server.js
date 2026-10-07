@@ -1,6 +1,7 @@
 import { loadConfig } from './config.js'
 import { openDb } from './db.js'
 import { buildApp } from './app.js'
+import { demarrerPurgeSessions } from './lib/purge-sessions.js'
 
 let config
 let db
@@ -13,9 +14,17 @@ try {
   process.exit(1)
 }
 
-const app = buildApp({ db, nodeEnv: config.nodeEnv, trustProxy: config.trustProxy })
+const app = buildApp({
+  db,
+  nodeEnv: config.nodeEnv,
+  publicUrl: config.publicUrl,
+  trustProxy: config.trustProxy,
+})
+
+const arreterPurge = demarrerPurgeSessions(db, { log: app.log })
 
 app.addHook('onClose', async () => {
+  arreterPurge()
   await db.end()
 })
 

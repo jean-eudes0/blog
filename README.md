@@ -77,4 +77,4 @@ npm test
 ```
 La base de test est vidée à chaque `npm test` : `server/.env.test` doit pointer vers une base PostgreSQL locale, jamais vers ta base de développement ou de production.
 
-Routes disponibles pour l'instant : `GET /api/health`, `GET /api/articles`, `GET /api/articles/:slug`, `GET /api/tags`.
+Routes disponibles pour l'instant : `/api/health`, `/api/auth/login`, `/api/auth/logout`, `/api/articles`, `/api/articles/:slug`, `/api/tags`, `/api/auth/me`, Compte admin :`npm run create-admin -- moi@exemple.com` .

@@ -53,7 +53,7 @@ Une session expirée est refusée à la lecture, mais sa ligne reste en base. Un
 - `@fastify/rate-limit` sur `POST /api/auth/login` : **5 tentatives par minute et par IP**.
 - Message d'erreur **identique** pour un email inconnu et pour un mauvais mot de passe.
 - Si l'email est inconnu, on exécute quand même une comparaison bcrypt factice, pour que le temps de réponse ne révèle pas l'existence du compte.
-- bcrypt avec un coût de 12. **Attention : bcrypt ignore silencieusement tout ce qui dépasse 72 octets** d'un mot de passe. À la création du compte, le script refuse donc un mot de passe de plus de 72 octets (pas 72 caractères : un accent en pèse 2), plutôt que de le tronquer sans le dire.
+- bcrypts(version Javascript de bcrypt) avec un coût de 12. **Attention : bcrypt ignore silencieusement tout ce qui dépasse 72 octets** d'un mot de passe. À la création du compte, le script refuse donc un mot de passe de plus de 72 octets (pas 72 caractères : un accent en pèse 2), plutôt que de le tronquer sans le dire.
 
 ### Création du compte admin
 
@@ -304,7 +304,7 @@ Le `coverUrl` restreint à `http(s)` n'est pas décoratif : une URL de type `jav
 - [ ] Taille du corps limitée (`bodyLimit` à 512 Ko : `contentMd` peut atteindre 100 000 caractères, soit jusqu'à 200 Ko avec des accents, plus l'échappement JSON)
 - [ ] Le cookie et les mots de passe **masqués dans les logs** (option `redact` de pino)
 - [ ] Secrets dans `.env`, jamais commités ; un `.env.example` documente les variables
-- [ ] `trustProxy` activé derrière l'hébergeur pour que la limitation de débit voie la vraie IP
+- [ ] `TRUST_PROXY`renseigné avec une liste d'adresses ou de plages, jamais `true` : sinon un client peut forger son adresse IP 
 - [ ] Pas d'inscription publique
 
 ## 9. Structure du code
@@ -342,7 +342,7 @@ Deux points qui comptent :
 
 Premier point, en détail : **`app.js` construit l'application et `server.js` la lance**. Les tests appellent `buildApp({ db })` avec une base PostgreSQL de test et envoient des requêtes avec `app.inject()`, sans ouvrir de port ni dépendre de l'état d'une vraie base.
 
-Dépendances à ajouter : `fastify-plugin` (dès l'étape 1), puis `@fastify/cookie`, `@fastify/static`, `@fastify/helmet`, `@fastify/rate-limit`, `bcrypt` (ou `bcryptjs` si l'installation native pose problème).
+Dépendances à ajouter : `fastify-plugin` (dès l'étape 1), puis `@fastify/cookie`, `@fastify/static`, `@fastify/helmet`, `@fastify/rate-limit`, `bcryptjs`.
 
 ## 10. Ce qui est volontairement hors V1
 

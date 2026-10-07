@@ -2,6 +2,7 @@ import Fastify from 'fastify'
 import rateLimit from '@fastify/rate-limit'
 import errorsPlugin from './plugins/errors.js'
 import authPlugin from './plugins/auth.js'
+import originePlugin from './plugins/origine.js'
 import authRoutes from './routes/auth.js'
 import articlesRoutes from './routes/articles.js'
 import tagsRoutes from './routes/tags.js'
@@ -10,6 +11,8 @@ import { tropDeRequetes } from './lib/http-errors.js'
 export function buildApp({
   db,
   nodeEnv = 'development',
+  // Adresse publique du site : sert au contrôle d'origine (docs/api.md §2).
+  publicUrl = 'http://localhost:5173',
   // Proxys de confiance (liste d'adresses ou de plages), false = aucun. Voir docs/api.md §8.
   trustProxy = false,
   // Limite de tentatives sur la connexion : 5 par minute et par IP.
@@ -41,6 +44,7 @@ export function buildApp({
 
   app.decorate('db', db)
   app.register(errorsPlugin)
+  app.register(originePlugin, { publicUrl })
   app.register(authPlugin, { secure: nodeEnv === 'production' })
   // global: false : la limitation ne s'applique qu'aux routes qui la demandent.
   // Sans errorResponseBuilder, un 429 sortirait avec le code VALIDATION_ERROR.
