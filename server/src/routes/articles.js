@@ -1,3 +1,6 @@
+import { nonTrouve } from "../lib/http-errors.js"
+
+
 // Routes publiques de lecture des articles (voir docs/api.md §4).
 // Un article en brouillon se comporte EXACTEMENT comme un article
 // inexistant : même 404, même code d'erreur. On ne révèle jamais
@@ -132,10 +135,7 @@ export default async function articlesRoutes(app) {
       )
       const article = rows[0]
       if (!article) {
-        const err = new Error('Article introuvable')
-        err.statusCode = 404
-        err.code = 'NOT_FOUND'
-        throw err
+        throw nonTrouve ('Articles introuvable')
       }
 
       const tagsParArticle = await chargerTagsPour(app.db, [article.id])

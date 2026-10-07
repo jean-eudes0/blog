@@ -11,6 +11,7 @@ test('une configuration minimale valide reçoit les valeurs par défaut', () => 
     port: 3000,
     databaseUrl: base.DATABASE_URL,
     publicUrl: 'http://localhost:5173',
+    trustProxy: false,
   })
 })
 
@@ -40,4 +41,25 @@ test('le mot de passe de la base ne fuit jamais dans le message d\'erreur', () =
     () => loadConfig({ DATABASE_URL: 'mysql://neondb_owner:MOTDEPASSE_SECRET@hote/db' }),
     (err) => !err.message.includes('MOTDEPASSE_SECRET')
   )
+})
+
+test('TRUST_PROXY est désactivé par défaut (false), aussi quand il est vide', () => {
+  assert.equal(loadConfig(base).trustProxy, false)
+  assert.equal(loadConfig({ ...base, TRUST_PROXY: '' }).trustProxy, false)
+  assert.equal(loadConfig({ ...base, TRUST_PROXY: '  ' }).trustProxy, false)
+})
+
+test('TRUST_PROXY accepte des noms, des adresses et des plages séparés par des virgules', () => {
+  assert.equal(loadConfig({ ...base, TRUST_PROXY: 'loopback' }).trustProxy, 'loopback')
+  assert.equal(
+    loadConfig({ ...base, TRUST_PROXY: 'loopback, linklocal , uniquelocal' }).trustProxy,
+    'loopback,linklocal,uniquelocal'
+  )
+  assert.equal(loadConfig({ ...base, TRUST_PROXY: '10.0.0.0/8,203.0.113.9,::1' }).trustProxy, '10.0.0.0/8,203.0.113.9,::1')
+})
+
+test('TRUST_PROXY refuse un nombre de sauts (inutilisable avec Fastify) et le reste', () => {
+  for (const valeur of ['1', '0', 'true', 'abc', 'loopback,abc', 'loopback,,', '10.0.0.0/8; DROP']) {
+    assert.throws(() => loadConfig({ ...base, TRUST_PROXY: valeur }), /TRUST_PROXY/, valeur)
+  }
 })

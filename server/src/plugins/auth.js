@@ -1,6 +1,7 @@
 import fp from 'fastify-plugin'
 import cookie from '@fastify/cookie'
 import { NOM_COOKIE, DUREE_SESSION_SECONDES, trouverUtilisateur } from '../lib/sessions.js'
+import { nonAuthentifie } from '../lib/http-errors.js'
 
 // Lecture du cookie de session (voir docs/api.md §2).
 // Fournit :
@@ -35,11 +36,6 @@ export default fp(async function authPlugin(app, { secure = false } = {}) {
 
   app.decorate('exigerSession', async (request) => {
     const user = await app.chargerUtilisateur(request)
-    if (!user) {
-      const err = new Error('Authentification requise')
-      err.statusCode = 401
-      err.code = 'UNAUTHENTICATED'
-      throw err
-    }
+    if (!user) throw nonAuthentifie()
   })
 })

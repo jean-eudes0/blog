@@ -1,3 +1,16 @@
+import { isIP } from 'node:net'
+
+// "10.0.0.1", "::1", "10.0.0.0/8" : une vraie adresse IP, avec ou sans longueur de préfixe.
+// (Une simple regex laissait passer "1" ou "abc", que Fastify refuse ensuite au démarrage.)
+function estAdresseOuPlage(texte) {
+  const [adresse, prefixe, ...reste] = texte.split('/')
+  const version = isIP(adresse)
+  if (version === 0 || reste.length > 0) return false
+  if (prefixe === undefined) return true
+  const max = version === 4 ? 32 : 128
+  return /^\d{1,3}$/.test(prefixe) && Number(prefixe) <= max
+}
+
 // Lit et valide la configuration. Toutes les erreurs sont collectées puis
 // signalées ensemble, pour qu'on les corrige en une seule fois.
 export function loadConfig(env = process.env) {
@@ -37,9 +50,26 @@ export function loadConfig(env = process.env) {
     }
   }
 
+  // Proxys de confiance (voir docs/api.md §8) : liste d'adresses, de plages CIDR ou de
+  // noms (loopback, linklocal, uniquelocal), séparés par des virgules. Vide = aucun.
+  // Un NOMBRE de sauts ne marche pas : Fastify refuse alors de faire confiance à tout
+  // le monde, par sécurité, et l'adresse IP du visiteur reste celle du proxy.
+  let trustProxy = false
+  if (env.TRUST_PROXY !== undefined && env.TRUST_PROXY.trim() !== '') {
+    const elements = env.TRUST_PROXY.split(',').map((e) => e.trim())
+    const valide = (e) => ['loopback', 'linklocal', 'uniquelocal'].includes(e) || estAdresseOuPlage(e)
+    if (elements.every(valide)) trustProxy = elements.join(',')
+    else {
+      erreurs.push(
+        'TRUST_PROXY doit être une liste, séparée par des virgules, d\'adresses IP, de plages CIDR ' +
+          'ou de noms (loopback, linklocal, uniquelocal). Un nombre de sauts ne fonctionne pas.'
+      )
+    }
+  }
+
   if (erreurs.length > 0) {
     throw new Error(`configuration invalide :\n  - ${erreurs.join('\n  - ')}`)
   }
 
-  return { nodeEnv, port, databaseUrl, publicUrl }
+  return { nodeEnv, port, databaseUrl, publicUrl, trustProxy }
 }

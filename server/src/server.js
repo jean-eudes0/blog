@@ -13,7 +13,7 @@ try {
   process.exit(1)
 }
 
-const app = buildApp({ db, nodeEnv: config.nodeEnv })
+const app = buildApp({ db, nodeEnv: config.nodeEnv, trustProxy: config.trustProxy })
 
 app.addHook('onClose', async () => {
   await db.end()

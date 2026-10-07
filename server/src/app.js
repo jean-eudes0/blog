@@ -1,10 +1,20 @@
 import Fastify from 'fastify'
+import rateLimit from '@fastify/rate-limit'
 import errorsPlugin from './plugins/errors.js'
+import authPlugin from './plugins/auth.js'
+import authRoutes from './routes/auth.js'
 import articlesRoutes from './routes/articles.js'
 import tagsRoutes from './routes/tags.js'
-import authPlugin from './plugins/auth.js'
+import { tropDeRequetes } from './lib/http-errors.js'
 
-export function buildApp({ db, nodeEnv = 'development' } = {}) {
+export function buildApp({
+  db,
+  nodeEnv = 'development',
+  // Proxys de confiance (liste d'adresses ou de plages), false = aucun. Voir docs/api.md §8.
+  trustProxy = false,
+  // Limite de tentatives sur la connexion : 5 par minute et par IP.
+  limiteLogin = { max: 5, timeWindow: '1 minute' },
+} = {}) {
   const app = Fastify({
     logger: {
       level: nodeEnv === 'test' ? 'silent' : 'info',
@@ -14,10 +24,14 @@ export function buildApp({ db, nodeEnv = 'development' } = {}) {
       },
     },
     bodyLimit: 512 * 1024,
+    // Sans cela, X-Forwarded-For est ignoré : l'IP du visiteur est alors celle du proxy de l'hébergeur.
+    trustProxy,
     // Par défaut Fastify SUPPRIME en silence les champs en trop au lieu de
     // les refuser. Avec false, additionalProperties: false renvoie bien un 400
     // (voir docs/api.md §6).
     ajv: { customOptions: { removeAdditional: false } },
+    // Erreurs levées par le routeur avant tout handler (ex: paramètre d'URL trop long) :
+    // sans ceci, elles sortent au format Fastify avec un code FST_*.
     frameworkErrors: (err, request, reply) => {
       reply.code(err.statusCode ?? 400).send({
         error: { code: 'VALIDATION_ERROR', message: 'Requête invalide' },
@@ -28,6 +42,9 @@ export function buildApp({ db, nodeEnv = 'development' } = {}) {
   app.decorate('db', db)
   app.register(errorsPlugin)
   app.register(authPlugin, { secure: nodeEnv === 'production' })
+  // global: false : la limitation ne s'applique qu'aux routes qui la demandent.
+  // Sans errorResponseBuilder, un 429 sortirait avec le code VALIDATION_ERROR.
+  app.register(rateLimit, { global: false, errorResponseBuilder: () => tropDeRequetes() })
 
   // Vérifie seulement que la base répond, sans rien révéler de son contenu.
   app.get('/api/health', async () => {
@@ -35,6 +52,7 @@ export function buildApp({ db, nodeEnv = 'development' } = {}) {
     return { status: 'ok' }
   })
 
+  app.register(authRoutes, { limiteLogin })
   app.register(articlesRoutes)
   app.register(tagsRoutes)
 
