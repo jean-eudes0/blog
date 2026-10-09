@@ -24,7 +24,7 @@ const app = buildApp({
 const arreterPurge = demarrerPurgeSessions(db, { log: app.log })
 
 app.addHook('onClose', async () => {
-  arreterPurge()
+  await arreterPurge()
   await db.end()
 })
 

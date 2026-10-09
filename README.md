@@ -77,4 +77,24 @@ npm test
 ```
 La base de test est vidée à chaque `npm test` : `server/.env.test` doit pointer vers une base PostgreSQL locale, jamais vers ta base de développement ou de production.
 
-Routes disponibles pour l'instant : `/api/health`, `/api/auth/login`, `/api/auth/logout`, `/api/articles`, `/api/articles/:slug`, `/api/tags`, `/api/auth/me`, Compte admin :`npm run create-admin -- moi@exemple.com` .
+Routes disponibles pour l'instant : `GET /api/health`, `GET /api/articles`, `GET /api/articles/:slug`, `GET /api/tags`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`.
+
+Créer le compte admin (il n'y a pas d'inscription publique) :
+
+```bash
+npm run create-admin -- moi@exemple.com
+```
+
+### Variables d'environnement
+
+| Variable | Rôle |
+|---|---|
+| `DATABASE_URL` | URL PostgreSQL (obligatoire) |
+| `PORT` | port d'écoute (3000 par défaut) |
+| `NODE_ENV` | `development`, `test` ou `production` |
+| `PUBLIC_URL` | adresse publique du site, obligatoire en production, sert au contrôle d'origine |
+| `TRUST_PROXY` | adresses des proxys de confiance (vide en local) |
+
+### Déploiement sur Render
+
+Render est placé derrière Cloudflare : `TRUST_PROXY` doit contenir `loopback,uniquelocal` **et** les plages d'adresses de Cloudflare (https://www.cloudflare.com/ips-v4 et https://www.cloudflare.com/ips-v6). Sinon l'application prend l'adresse de Cloudflare pour celle du visiteur et la limite de connexion est partagée entre tous.

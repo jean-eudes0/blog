@@ -135,7 +135,7 @@ export default async function articlesRoutes(app) {
       )
       const article = rows[0]
       if (!article) {
-        throw nonTrouve ('Articles introuvable')
+        throw nonTrouve ('Article introuvable')
       }
 
       const tagsParArticle = await chargerTagsPour(app.db, [article.id])

@@ -63,3 +63,42 @@ test('TRUST_PROXY refuse un nombre de sauts (inutilisable avec Fastify) et le re
     assert.throws(() => loadConfig({ ...base, TRUST_PROXY: valeur }), /TRUST_PROXY/, valeur)
   }
 })
+
+test('TRUST_PROXY : le message nomme l\'élément fautif, et seulement lui', () => {
+  const message = (valeur) => {
+    try { loadConfig({ ...base, TRUST_PROXY: valeur }) } catch (err) { return err.message }
+    return ''
+  }
+  const m = message('loopback,abc,10.0.0.0/8')
+  assert.match(m, /"abc"/)
+  assert.ok(!m.includes('10.0.0.0/8'), 'les éléments valides ne doivent pas être listés comme fautifs')
+})
+
+test('TRUST_PROXY : conseils pour les erreurs de saisie courantes', () => {
+  const message = (valeur) => {
+    try { loadConfig({ ...base, TRUST_PROXY: valeur }) } catch (err) { return err.message }
+    return ''
+  }
+  assert.match(message('TRUST_PROXY=loopback,uniquelocal'), /sans « TRUST_PROXY= »/)
+  assert.match(message('"loopback,uniquelocal"'), /guillemets/)
+  assert.match(message('loopback,uniquelocal,'), /""/)
+})
+
+test('TRUST_PROXY : un élément démesuré est tronqué dans le message', () => {
+  try {
+    loadConfig({ ...base, TRUST_PROXY: 'x'.repeat(500) })
+    assert.fail('aurait dû être refusé')
+  } catch (err) {
+    assert.ok(err.message.length < 600, `message trop long : ${err.message.length} caractères`)
+    assert.match(err.message, /…/)
+  }
+})
+
+test('TRUST_PROXY : plus de trois éléments fautifs sont résumés', () => {
+  try {
+    loadConfig({ ...base, TRUST_PROXY: 'a,b,c,d,e' })
+    assert.fail('aurait dû être refusé')
+  } catch (err) {
+    assert.match(err.message, /et 2 autre\(s\)/)
+  }
+})

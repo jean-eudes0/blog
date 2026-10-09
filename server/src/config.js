@@ -58,11 +58,24 @@ export function loadConfig(env = process.env) {
   if (env.TRUST_PROXY !== undefined && env.TRUST_PROXY.trim() !== '') {
     const elements = env.TRUST_PROXY.split(',').map((e) => e.trim())
     const valide = (e) => ['loopback', 'linklocal', 'uniquelocal'].includes(e) || estAdresseOuPlage(e)
-    if (elements.every(valide)) trustProxy = elements.join(',')
-    else {
+    const invalides = elements.filter((e) => !valide(e))
+    if (invalides.length === 0) {
+      trustProxy = elements.join(',')
+    } else {
+      // On nomme les éléments fautifs (jamais la liste entière) : la valeur n'a rien de secret,
+      // mais une valeur collée de travers peut être très longue.
+      const apercu = invalides
+        .slice(0, 3)
+        .map((e) => JSON.stringify(e.length > 40 ? `${e.slice(0, 40)}…` : e))
+        .join(', ')
+      const suite = invalides.length > 3 ? ` (et ${invalides.length - 3} autre(s))` : ''
+      let conseil = ''
+      if (invalides.some((e) => /^TRUST_PROXY\s*=/.test(e))) conseil = ' Colle seulement la valeur, sans « TRUST_PROXY= ».'
+      else if (invalides.some((e) => /["'`]/.test(e))) conseil = ' Retire les guillemets autour de la valeur.'
       erreurs.push(
-        'TRUST_PROXY doit être une liste, séparée par des virgules, d\'adresses IP, de plages CIDR ' +
-          'ou de noms (loopback, linklocal, uniquelocal). Un nombre de sauts ne fonctionne pas.'
+        `TRUST_PROXY contient des éléments invalides : ${apercu}${suite}.${conseil} ` +
+          "Attendu : une liste, séparée par des virgules, d'adresses IP, de plages CIDR ou de noms " +
+          '(loopback, linklocal, uniquelocal). Un nombre de sauts ne fonctionne pas.'
       )
     }
   }

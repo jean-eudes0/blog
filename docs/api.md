@@ -53,7 +53,7 @@ Une session expirée est refusée à la lecture, mais sa ligne reste en base. Un
 - `@fastify/rate-limit` sur `POST /api/auth/login` : **5 tentatives par minute et par IP**.
 - Message d'erreur **identique** pour un email inconnu et pour un mauvais mot de passe.
 - Si l'email est inconnu, on exécute quand même une comparaison bcrypt factice, pour que le temps de réponse ne révèle pas l'existence du compte.
-- bcrypts(version Javascript de bcrypt) avec un coût de 12. **Attention : bcrypt ignore silencieusement tout ce qui dépasse 72 octets** d'un mot de passe. À la création du compte, le script refuse donc un mot de passe de plus de 72 octets (pas 72 caractères : un accent en pèse 2), plutôt que de le tronquer sans le dire.
+- bcryptjs(version Javascript de bcrypt) avec un coût de 12. **Attention : bcrypt ignore silencieusement tout ce qui dépasse 72 octets** d'un mot de passe. À la création du compte, le script refuse donc un mot de passe de plus de 72 octets (pas 72 caractères : un accent en pèse 2), plutôt que de le tronquer sans le dire.
 
 ### Création du compte admin
 
@@ -228,7 +228,7 @@ Un seul format, produit par un gestionnaire d'erreurs central. Le code HTTP (par
   }
 }
 ```
--`details` n'apparaît que pour les erreurs de validation d'un schéma (champ manquant, type ou valeur invalide). 
+- `details` n'apparaît que pour les erreurs de validation d'un schéma (champ manquant, type ou valeur invalide). 
 - Les `message` de `details` viennent de la bibliothèque de validation (Ajv)
  et sont ** en anglais ** pour l'instant.
 - Une requête mal formée avant même la validation (Json invalide, corps ou URL trop longs) renvoie `VALIDATION_ERROR` avec le message `Requête invalide`, sans `details`.
@@ -291,21 +291,22 @@ Le `coverUrl` restreint à `http(s)` n'est pas décoratif : une URL de type `jav
 
 ## 8. Sécurité : liste de contrôle
 
-- [ ] Requêtes SQL **préparées** uniquement, jamais de concaténation de texte
-- [ ] Schémas de réponse sur toutes les routes
-- [ ] Jeton de session aléatoire, seule l'empreinte SHA-256 en base
-- [ ] Cookie `HttpOnly`, `SameSite=Lax`, `Secure` en production
-- [ ] Nouvelle session à chaque connexion, suppression à la déconnexion
-- [ ] Limitation de débit sur la connexion
-- [ ] Message et temps de réponse identiques pour email inconnu et mauvais mot de passe
-- [ ] Vérification de l'`Origin` sur les requêtes qui modifient des données
+- [x] Requêtes SQL **préparées** uniquement, jamais de concaténation de texte
+- [x] Schémas de réponse sur toutes les routes
+- [x] Jeton de session aléatoire, seule l'empreinte SHA-256 en base
+- [x] Cookie `HttpOnly`, `SameSite=Lax`, `Secure` en production
+- [x] Nouvelle session à chaque connexion, suppression à la déconnexion
+- [x] Limitation de débit sur la connexion
+- [x] Message et temps de réponse identiques pour email inconnu et mauvais mot de passe
+- [x] Vérification de l'`Origin` sur les requêtes qui modifient des données
 - [ ] `coverUrl` limité à `http(s)`
 - [ ] Markdown converti puis **nettoyé côté client** (DOMPurify), plus une politique CSP via `@fastify/helmet`
-- [ ] Taille du corps limitée (`bodyLimit` à 512 Ko : `contentMd` peut atteindre 100 000 caractères, soit jusqu'à 200 Ko avec des accents, plus l'échappement JSON)
-- [ ] Le cookie et les mots de passe **masqués dans les logs** (option `redact` de pino)
-- [ ] Secrets dans `.env`, jamais commités ; un `.env.example` documente les variables
-- [ ] `TRUST_PROXY`renseigné avec une liste d'adresses ou de plages, jamais `true` : sinon un client peut forger son adresse IP 
-- [ ] Pas d'inscription publique
+- [x] Taille du corps limitée (`bodyLimit` à 512 Ko : `contentMd` peut atteindre 100 000 caractères, soit jusqu'à 200 Ko avec des accents, plus l'échappement JSON)
+- [x] Le cookie et les mots de passe **masqués dans les logs** (option `redact` de pino)
+- [x] Secrets dans `.env`, jamais commités ; un `.env.example` documente les variables
+- [x] `TRUST_PROXY`  renseigné avec une liste d'adresses ou de plages, jamais `true` : sinon un client peut forger son adresse IP 
+- [x] Pas d'inscription publique
+- [x] Sur Render, il faut aussi les plages de Cloudfare 
 
 ## 9. Structure du code
 
@@ -321,7 +322,8 @@ server/
 │   ├── server.js         # démarre : lit la config, ouvre la base, écoute
 │   ├── config.js         # variables d'environnement, validées au démarrage
 │   ├── db.js
-│   ├── plugins/          # chacun enveloppé dans fastify-plugin (voir ci-dessous)
+│   ├── plugins/           # chacun enveloppé dans fastify-plugin (voir ci-dessous)
+│   │   ├── origine.js             
 │   │   ├── errors.js     # gestionnaire d'erreurs central
 │   │   └── auth.js       # lecture du cookie, chargement de la session
 │   ├── routes/
@@ -330,8 +332,12 @@ server/
 │   │   ├── tags.js
 │   │   └── admin-articles.js
 │   └── lib/
+│       ├── http-errors.js 
+│       ├── purge-sessions.js 
+│       ├── users.js      # gestion des utilisateurs
 │       ├── slug.js       # fonction pure, facile à tester
 │       └── sessions.js
+
 └── tests/
 ```
 
