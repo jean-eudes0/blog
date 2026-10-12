@@ -75,7 +75,9 @@ Tests : ils ont besoin d'une base PostgreSQL de test (elle est vidée à chaque 
 ```bash
 npm test
 ```
-La base de test est vidée à chaque `npm test` : `server/.env.test` doit pointer vers une base PostgreSQL locale, jamais vers ta base de développement ou de production.
+Tests : ils ont besoin d'une base PostgreSQL **dédiée aux tests** (locale, ou une base séparée
+comme `blog_test` sur Neon). Elle est vidée à chaque test : ne mets jamais dans
+`server/.env.test` l'adresse de ta base de développement ou de production. Puis :
 
 Routes disponibles pour l'instant : `GET /api/health`, `GET /api/articles`, `GET /api/articles/:slug`, `GET /api/tags`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`.
 
@@ -93,8 +95,37 @@ npm run create-admin -- moi@exemple.com
 | `PORT` | port d'écoute (3000 par défaut) |
 | `NODE_ENV` | `development`, `test` ou `production` |
 | `PUBLIC_URL` | adresse publique du site, obligatoire en production, sert au contrôle d'origine |
-| `TRUST_PROXY` | adresses des proxys de confiance (vide en local) |
+| `TRUST_PROXY` | proxys de confiance, séparés par des virgules : noms (`loopback`, `linklocal`, `uniquelocal`), adresses ou plages. Pas un nombre de sauts (refusé). Vide en local. |
 
 ### Déploiement sur Render
 
-Render est placé derrière Cloudflare : `TRUST_PROXY` doit contenir `loopback,uniquelocal` **et** les plages d'adresses de Cloudflare (https://www.cloudflare.com/ips-v4 et https://www.cloudflare.com/ips-v6). Sinon l'application prend l'adresse de Cloudflare pour celle du visiteur et la limite de connexion est partagée entre tous.
+Render est placé derrière Cloudflare : sans réglage, l'application prend l'adresse de
+Cloudflare pour celle du visiteur, et la limite de connexion est partagée entre tous.
+`TRUST_PROXY` doit contenir les réseaux internes **et** les plages de Cloudflare :
+
+```
+loopback,linklocal,uniquelocal,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,104.16.0.0/13,104.24.0.0/14,108.162.192.0/18,131.0.72.0/22,141.101.64.0/18,162.158.0.0/15,172.64.0.0/13,173.245.48.0/20,188.114.96.0/20,190.93.240.0/20,197.234.240.0/22,198.41.128.0/17,2400:cb00::/32,2606:4700::/32,2803:f800::/32,2405:b500::/32,2405:8100::/32,2a06:98c0::/29,2c0f:f248::/32
+```
+
+Source : https://www.cloudflare.com/ips-v4 et https://www.cloudflare.com/ips-v6.
+Liste vérifiée le 12 octobre 2026. Cloudflare la modifie de temps en temps : à relire de
+temps en temps et à comparer avec la valeur dans Render.
+
+Vérification : provoquer un échec de connexion sur le site, puis lire `"ip"` dans les
+journaux Render. Ce doit être ton adresse publique, jamais une adresse Cloudflare (`172.64.` à `172.71.`).
+
+
+En production, la variable du terminal l'emporte sur `.env` : vérifie la base visée avant de lancer le script.
+
+```powershell
+$env:DATABASE_URL = Read-Host "DATABASE_URL de production"
+([uri]$env:DATABASE_URL).AbsolutePath        # doit afficher /blog_prod
+$s = Read-Host "Mot de passe (12 caracteres minimum, sans accent)" -AsSecureString
+$p = [System.Net.NetworkCredential]::new("", $s).Password
+"$p`n$p" | node --env-file=.env scripts/create-admin.js moi@exemple.com
+Remove-Variable p, s
+Remove-Item Env:DATABASE_URL
+```
+
+Mot de passe oublié (pas de réinitialisation par e-mail en V1) : même commande avec
+`scripts/reset-password.js`. Les sessions ouvertes du compte sont alors supprimées.
