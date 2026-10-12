@@ -353,3 +353,11 @@ Dépendances à ajouter : `fastify-plugin` (dès l'étape 1), puis `@fastify/coo
 ## 10. Ce qui est volontairement hors V1
 
 Recherche et filtre par tag (V1.5), rôles multiples, CRUD de tags, édition du slug d'un brouillon, réinitialisation de mot de passe, versionnage d'API, prolongation glissante des sessions.
+
+### 11. Limitation des tentatives de connexion
+
+- Seuil : 5 tentatives échouées par email, puis réponse `429 Too Many Requests`.
+- Fenêtre : X minutes. Passé ce délai, le compteur repart de zéro.
+- Portée : par email (ou par couple IP + email). Les essais sur un autre email n'affectent pas le compteur d'un compte, et un login valide d'un autre compte reste possible pendant un blocage.
+- Limite connue : un attaquant qui change d'email à chaque essai n'est pas limité. Acceptable en V1 (aucune inscription publique, un seul compte admin). Piste ultérieure : limite globale par IP, plus large.
+- Derrière Render, l'IP réelle dépend de `TRUST_PROXY`. Vérifié en production le 12/10/2026 : 5 réponses `401`, puis `429`.
