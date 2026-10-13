@@ -354,10 +354,10 @@ Dépendances à ajouter : `fastify-plugin` (dès l'étape 1), puis `@fastify/coo
 
 Recherche et filtre par tag (V1.5), rôles multiples, CRUD de tags, édition du slug d'un brouillon, réinitialisation de mot de passe, versionnage d'API, prolongation glissante des sessions.
 
-### 11. Limitation des tentatives de connexion
+## 11. Limitation des tentatives de connexion
 
-- Seuil : 5 tentatives échouées par email, puis réponse `429 Too Many Requests`.
-- Fenêtre : X minutes. Passé ce délai, le compteur repart de zéro.
-- Portée : par email (ou par couple IP + email). Les essais sur un autre email n'affectent pas le compteur d'un compte, et un login valide d'un autre compte reste possible pendant un blocage.
-- Limite connue : un attaquant qui change d'email à chaque essai n'est pas limité. Acceptable en V1 (aucune inscription publique, un seul compte admin). Piste ultérieure : limite globale par IP, plus large.
-- Derrière Render, l'IP réelle dépend de `TRUST_PROXY`. Vérifié en production le 12/10/2026 : 5 réponses `401`, puis `429`.
+- Seuil : 5 requêtes sur `POST /api/auth/login` par minute et par IP, puis réponse `429 RATE_LIMITED`. Les tentatives réussies comptent aussi.
+- Fenêtre : 1 minute. Passé ce délai, le compteur repart de zéro.
+- Portée : par IP, tous comptes confondus. Pendant un blocage, un login valide depuis la même IP est refusé aussi.
+- Limite connue : un attaquant qui change d'IP contourne la limite. Acceptable en V1 (un seul compte admin, mot de passe de 12 caractères minimum, bcrypt de coût 12). Piste ultérieure : limite supplémentaire par email.
+- Derrière Render et Cloudflare, l'IP réelle dépend de `TRUST_PROXY`. Vérifié en production le 12/10/2026 : 5 réponses `401`, puis `429`.
