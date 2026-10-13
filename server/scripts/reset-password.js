@@ -13,7 +13,7 @@ import readline from 'node:readline'
 import bcrypt from 'bcryptjs'
 import { loadConfig } from '../src/config.js'
 import { openDb } from '../src/db.js'
-import { COUT_BCRYPT, ErreurValidation, validerEmail, validerMotDePasse } from '../src/lib/users.js'
+import { COUT_BCRYPT, ErreurValidation, reinitialiserMotDePasse, validerEmail, validerMotDePasse } from '../src/lib/users.js'
 
 async function lireDeuxLignes() {
   if (process.stdin.isTTY) {
@@ -30,7 +30,7 @@ async function lireDeuxLignes() {
 }
 
 async function main() {
-  if (!process.argv[2]) {
+    if (!process.argv[2]) {
     throw new ErreurValidation('Usage : "$p`n$p" | node scripts/reset-password.js adresse@exemple.com')
   }
   const email = validerEmail(process.argv[2])
@@ -42,15 +42,11 @@ async function main() {
   const config = loadConfig()
   const db = await openDb(config.databaseUrl)
   try {
-    const { rows } = await db.query(
-      'UPDATE users SET password_hash = $2 WHERE lower(email) = $1 RETURNING id, email',
-      [email, hash]
-    )
-    if (rows.length === 0) {
+        const compte = await reinitialiserMotDePasse(db, email, hash)
+    if (!compte) {
       throw new ErreurValidation(`Aucun compte avec l'adresse ${email}. Crée-le avec : npm run create-admin -- ${email}`)
     }
-    const { rowCount } = await db.query('DELETE FROM sessions WHERE user_id = $1', [rows[0].id])
-    console.log(`Mot de passe remplacé pour ${rows[0].email} (id ${rows[0].id}). Sessions fermées : ${rowCount}.`)
+    console.log(`Mot de passe remplacé pour ${compte.email} (id ${compte.id}). Sessions fermées : ${compte.sessions_fermees}.`)
   } finally {
     await db.end()
   }

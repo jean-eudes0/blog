@@ -8,7 +8,6 @@ export const MOT_DE_PASSE_MAX_OCTETS = 72
 
 // Erreur dont le message est destiné à être lu par la personne qui lance le script.
 export class ErreurValidation extends Error {}
-
 export function validerEmail(email) {
   const propre = String(email ?? '').trim().toLowerCase()
   if (propre.length === 0 || propre.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(propre)) {
@@ -79,3 +78,20 @@ export async function verifierMotDePasse(motDePasse, hash) {
   const tropLong = Buffer.byteLength(String(motDePasse), 'utf8') > MOT_DE_PASSE_MAX_OCTETS
   return hashUtilisable && correspond && !tropLong
 }
+
+export async function reinitialiserMotDePasse(db, email, hash) {
+  const { rows } = await db.query(
+    `WITH maj AS (
+       UPDATE users SET password_hash = $2
+       WHERE lower(email) = $1
+       RETURNING id, email
+     ), purge AS (
+       DELETE FROM sessions WHERE user_id IN (SELECT id FROM maj) RETURNING 1
+     )
+     SELECT id, email, (SELECT count(*) FROM purge)::int AS sessions_fermees FROM maj`,
+    [email, hash]
+  )
+  return rows[0] ?? null
+}
+
+

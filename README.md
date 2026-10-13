@@ -70,14 +70,14 @@ Données de démonstration (jamais en production) :
 npm run seed
 ```
 
-Tests : ils ont besoin d'une base PostgreSQL de test (elle est vidée à chaque test). Mets son `DATABASE_URL` dans `server/.env.test`, puis :
+Tests : ils ont besoin d'une base PostgreSQL **dédiée aux tests** (locale, ou une base séparée
+comme `blog_test` sur Neon). Elle est vidée à chaque test : ne mets jamais dans
+`server/.env.test` l'adresse de ta base de développement ou de production. Mets son
+`DATABASE_URL` dans `server/.env.test`, puis :
 
 ```bash
 npm test
 ```
-Tests : ils ont besoin d'une base PostgreSQL **dédiée aux tests** (locale, ou une base séparée
-comme `blog_test` sur Neon). Elle est vidée à chaque test : ne mets jamais dans
-`server/.env.test` l'adresse de ta base de développement ou de production. Puis :
 
 Routes disponibles pour l'instant : `GET /api/health`, `GET /api/articles`, `GET /api/articles/:slug`, `GET /api/tags`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`.
 
@@ -85,6 +85,15 @@ Créer le compte admin (il n'y a pas d'inscription publique) :
 
 ```bash
 npm run create-admin -- moi@exemple.com
+```
+Mot de passe oublié (pas de réinitialisation par e-mail en V1) : le mot de passe est lu
+sur l'entrée standard, saisi deux fois, jamais en argument.
+
+```powershell
+$s = Read-Host "Nouveau mot de passe (12 caracteres minimum, sans accent)" -AsSecureString
+$p = [System.Net.NetworkCredential]::new("", $s).Password
+"$p`n$p" | npm run reset-password -- moi@exemple.com
+Remove-Variable p, s
 ```
 
 ### Variables d'environnement
@@ -114,6 +123,7 @@ temps en temps et à comparer avec la valeur dans Render.
 Vérification : provoquer un échec de connexion sur le site, puis lire `"ip"` dans les
 journaux Render. Ce doit être ton adresse publique, jamais une adresse Cloudflare (`172.64.` à `172.71.`).
 
+### Créer ou reinitialiser le compte admin en production
 
 En production, la variable du terminal l'emporte sur `.env` : vérifie la base visée avant de lancer le script.
 
@@ -127,5 +137,5 @@ Remove-Variable p, s
 Remove-Item Env:DATABASE_URL
 ```
 
-Mot de passe oublié (pas de réinitialisation par e-mail en V1) : même commande avec
-`scripts/reset-password.js`. Les sessions ouvertes du compte sont alors supprimées.
+Mot de passe oublié (pas de réinitialisation par e-mail en V1) : même commande avec `scripts/reset-password.js`. Les sessions ouvertes du compte sont alors supprimées.
+

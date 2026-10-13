@@ -2,7 +2,7 @@ import { test, before, beforeEach, after } from 'node:test'
 import assert from 'node:assert/strict'
 import bcrypt from 'bcryptjs'
 import { getTestDb, resetDb } from './helpers.js'
-import { creerAdmin, validerEmail, validerMotDePasse, ErreurValidation } from '../src/lib/users.js'
+import { creerAdmin,reinitialiserMotDePasse, validerEmail, validerMotDePasse, ErreurValidation } from '../src/lib/users.js'
 
 let db
 
@@ -65,4 +65,71 @@ test('validerEmail refuse les adresses invalides', () => {
     assert.throws(() => validerEmail(mauvais), ErreurValidation)
   }
   assert.equal(validerEmail(' Moi@Exemple.com '), 'moi@exemple.com')
+})
+
+async function ajouterSessions(userId, nombre) {
+  for (let i = 0; i < nombre; i++) {
+    await db.query(
+      `INSERT INTO sessions (id, user_id, expires_at)
+       VALUES ($1, $2, now() + interval '1 day')`,
+      [`session-test-${userId}-${i}-${Math.random()}`, userId]
+    )
+  }
+}
+
+async function compterSessions(userId) {
+  const { rows } = await db.query('SELECT count(*)::int AS n FROM sessions WHERE user_id = $1', [userId])
+  return rows[0].n
+}
+
+const NOUVEAU_MDP = 'un-autre-mot-de-passe'
+
+test('reinitialiserMotDePasse remplace le hash et renvoie le compte', async () => {
+  const admin = await creerAdmin(db, 'moi@exemple.com', MDP, { cout: 4 })
+  const nouveauHash = await bcrypt.hash(NOUVEAU_MDP, 4)
+
+  const compte = await reinitialiserMotDePasse(db, 'moi@exemple.com', nouveauHash)
+
+  assert.deepEqual(compte, { id: admin.id, email: 'moi@exemple.com', sessions_fermees: 0 })
+  const { rows } = await db.query('SELECT password_hash FROM users WHERE id = $1', [admin.id])
+  assert.equal(rows[0].password_hash, nouveauHash)
+  assert.equal(await bcrypt.compare(NOUVEAU_MDP, rows[0].password_hash), true)
+  assert.equal(await bcrypt.compare(MDP, rows[0].password_hash), false)
+})
+
+test('reinitialiserMotDePasse supprime toutes les sessions du compte', async () => {
+  const admin = await creerAdmin(db, 'moi@exemple.com', MDP, { cout: 4 })
+  await ajouterSessions(admin.id, 2)
+
+  const compte = await reinitialiserMotDePasse(db, 'moi@exemple.com', await bcrypt.hash(NOUVEAU_MDP, 4))
+
+  assert.equal(compte.sessions_fermees, 2)
+  assert.equal(await compterSessions(admin.id), 0)
+})
+
+test('reinitialiserMotDePasse ne touche ni au hash ni aux sessions des autres comptes', async () => {
+  const premier = await creerAdmin(db, 'premier@exemple.com', MDP, { cout: 4 })
+  const second = await creerAdmin(db, 'second@exemple.com', MDP, { cout: 4 })
+  await ajouterSessions(premier.id, 1)
+  await ajouterSessions(second.id, 1)
+  const avant = await db.query('SELECT password_hash FROM users WHERE id = $1', [second.id])
+
+  await reinitialiserMotDePasse(db, 'premier@exemple.com', await bcrypt.hash(NOUVEAU_MDP, 4))
+
+  assert.equal(await compterSessions(second.id), 1)
+  const apres = await db.query('SELECT password_hash FROM users WHERE id = $1', [second.id])
+  assert.equal(apres.rows[0].password_hash, avant.rows[0].password_hash)
+})
+
+test('reinitialiserMotDePasse renvoie null pour un e-mail inconnu et ne modifie rien', async () => {
+  const admin = await creerAdmin(db, 'moi@exemple.com', MDP, { cout: 4 })
+  await ajouterSessions(admin.id, 1)
+  const avant = await db.query('SELECT password_hash FROM users WHERE id = $1', [admin.id])
+
+  const compte = await reinitialiserMotDePasse(db, 'inconnu@exemple.com', await bcrypt.hash(NOUVEAU_MDP, 4))
+
+  assert.equal(compte, null)
+  assert.equal(await compterSessions(admin.id), 1)
+  const apres = await db.query('SELECT password_hash FROM users WHERE id = $1', [admin.id])
+  assert.equal(apres.rows[0].password_hash, avant.rows[0].password_hash)
 })
