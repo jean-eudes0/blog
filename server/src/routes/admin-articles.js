@@ -1,5 +1,13 @@
 import { nonTrouve } from '../lib/http-errors.js'
-import { chargerArticleAdmin, creerArticle, listerArticlesAdmin } from '../lib/articles-admin.js'
+import {
+  chargerArticleAdmin,
+  creerArticle,
+  depublierArticle,
+  listerArticlesAdmin,
+  modifierArticle,
+  publierArticle,
+  supprimerArticle,
+} from '../lib/articles-admin.js'
 
 const tagSchema = {
   type: 'object',
@@ -39,14 +47,22 @@ const articleListeSchema = {
   },
 }
 
-// Règles de docs/api.md §6. Le pattern \S refuse un texte fait uniquement d'espaces ;
-// le pattern ^https?:// refuse javascript: et data: dans coverUrl (faille XSS).
+// Règles de docs/api.md §6, sous forme d'UN SEUL pattern par champ (Ajv n'en accepte qu'un).
+// Chaque pattern refuse aussi le caractère NUL (U+0000), qui ferait échouer PostgreSQL :
+// sans cela, il partirait en 500 au lieu d'un 400.
+//   - non vide : au moins un caractère qui n'est pas un espace ;
+//   - coverUrl : commence par http:// ou https:// (jamais javascript: ni data: : faille XSS).
+// Les mêmes champs servent à la création (POST) et à la modification (PATCH).
+const SANS_NUL = '^[^\\u0000]*$'
+const NON_VIDE_SANS_NUL = '^(?=[\\s\\S]*\\S)[^\\u0000]*$'
+const URL_HTTP_SANS_NUL = '^https?://[^\\u0000]*$'
+
 const champsArticle = {
-  title: { type: 'string', minLength: 1, maxLength: 150, pattern: '\\S' },
-  excerpt: { type: 'string', maxLength: 300 },
-  contentMd: { type: 'string', minLength: 1, maxLength: 100000, pattern: '\\S' },
-  coverUrl: { type: ['string', 'null'], maxLength: 500, pattern: '^https?://' },
-  tags: { type: 'array', maxItems: 5, items: { type: 'string', minLength: 1, maxLength: 30 } },
+  title: { type: 'string', minLength: 1, maxLength: 150, pattern: NON_VIDE_SANS_NUL },
+  excerpt: { type: 'string', maxLength: 300, pattern: SANS_NUL },
+  contentMd: { type: 'string', minLength: 1, maxLength: 100000, pattern: NON_VIDE_SANS_NUL },
+  coverUrl: { type: ['string', 'null'], maxLength: 500, pattern: URL_HTTP_SANS_NUL },
+  tags: { type: 'array', maxItems: 5, items: { type: 'string', minLength: 1, maxLength: 30, pattern: SANS_NUL } },
 }
 
 // Entier PostgreSQL (int4) : au-delà de 2147483647, la requête SQL échouerait en 500.
@@ -126,6 +142,61 @@ export default async function adminArticlesRoutes(app) {
       const id = await creerArticle(app.db, { authorId: request.user.id, ...request.body })
       const article = await chargerArticleAdmin(app.db, id)
       return reply.code(201).header('Location', `/api/admin/articles/${id}`).send(article)
+    }
+  )
+
+  // Tous les champs sont optionnels, mais il en faut au moins un (minProperties).
+  // slug, status, publishedAt, id et authorId sont refusés par additionalProperties: false.
+  app.patch(
+    '/api/admin/articles/:id',
+    {
+      onRequest: app.exigerSession,
+      schema: {
+        params: paramsId,
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          minProperties: 1,
+          properties: champsArticle,
+        },
+        response: { 200: articleAdminSchema },
+      },
+    },
+    async (request) => {
+      const trouve = await modifierArticle(app.db, request.params.id, request.body)
+      if (!trouve) throw nonTrouve('Article introuvable')
+      return chargerArticleAdmin(app.db, request.params.id)
+    }
+  )
+
+  // Le statut ne se change que par ces deux actions, jamais par PATCH (docs/api.md §4).
+  function routeAction(chemin, action) {
+    app.post(
+      `/api/admin/articles/:id/${chemin}`,
+      {
+        onRequest: app.exigerSession,
+        schema: { params: paramsId, response: { 200: articleAdminSchema } },
+      },
+      async (request) => {
+        const trouve = await action(app.db, request.params.id)
+        if (!trouve) throw nonTrouve('Article introuvable')
+        return chargerArticleAdmin(app.db, request.params.id)
+      }
+    )
+  }
+  routeAction('publish', publierArticle)
+  routeAction('unpublish', depublierArticle)
+
+  app.delete(
+    '/api/admin/articles/:id',
+    {
+      onRequest: app.exigerSession,
+      schema: { params: paramsId },
+    },
+    async (request, reply) => {
+      const trouve = await supprimerArticle(app.db, request.params.id)
+      if (!trouve) throw nonTrouve('Article introuvable')
+      return reply.code(204).send()
     }
   )
 }

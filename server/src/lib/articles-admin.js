@@ -2,6 +2,24 @@ import { slugifier, slugAvecSuffixe, normaliserTags } from './slug.js'
 import { conflit } from './http-errors.js'
 import { chargerTagsPour } from './tags.js'
 
+// Exécute `fn` dans UNE transaction, sur un client dédié du pool (docs/api.md §7) :
+// COMMIT si tout réussit, ROLLBACK au premier échec. Le client est toujours rendu au pool.
+async function enTransaction(db, fn) {
+  const client = await db.connect()
+  try {
+    await client.query('BEGIN')
+    const resultat = await fn(client)
+    await client.query('COMMIT')
+    return resultat
+  } catch (err) {
+    // Si la connexion est tombée, ROLLBACK échoue aussi : on ne doit pas masquer l'erreur d'origine.
+    await client.query('ROLLBACK').catch(() => {})
+    throw err
+  } finally {
+    client.release()
+  }
+}
+
 // Lecture complète d'un article (brouillon compris) avec ses tags.
 export async function chargerArticleAdmin(db, id) {
   const { rows } = await db.query(
@@ -71,7 +89,7 @@ export async function lierTags(client, articleId, tags) {
   )
 }
 
-// Crée un brouillon, ses tags et leurs liens dans UNE transaction (docs/api.md §7).
+// Crée un brouillon, ses tags et leurs liens dans UNE transaction.
 // Le slug est cherché avec ON CONFLICT DO NOTHING : un doublon ne fait pas échouer
 // la transaction, on essaie simplement le suffixe suivant (-2, -3...).
 export async function creerArticle(db, { authorId, title, contentMd, excerpt = '', coverUrl = null, tags = [] }) {
@@ -79,10 +97,7 @@ export async function creerArticle(db, { authorId, title, contentMd, excerpt = '
   const base = slugifier(titre)
   const tagsNormalises = normaliserTags(tags)
 
-  const client = await db.connect()
-  try {
-    await client.query('BEGIN')
-
+  return enTransaction(db, async (client) => {
     let id = null
     for (let essai = 1; essai <= 10 && id === null; essai++) {
       const { rows } = await client.query(
@@ -97,13 +112,73 @@ export async function creerArticle(db, { authorId, title, contentMd, excerpt = '
     if (id === null) throw conflit('Impossible de générer un slug unique')
 
     await lierTags(client, id, tagsNormalises)
-    await client.query('COMMIT')
     return id
-  } catch (err) {
-    // Si la connexion est tombée, ROLLBACK échoue aussi : on ne doit pas masquer l'erreur d'origine.
-    await client.query('ROLLBACK').catch(() => {})
-    throw err
-  } finally {
-    client.release()
+  })
+}
+
+// Champs modifiables par PATCH → colonne SQL. Liste fermée : aucun nom de colonne ne vient du client.
+const COLONNES_MODIFIABLES = {
+  title: 'title',
+  excerpt: 'excerpt',
+  contentMd: 'content_md',
+  coverUrl: 'cover_url',
+}
+
+// Modifie les champs reçus, et seulement eux, dans UNE transaction. `tags` REMPLACE la
+// liste complète. Le slug ne change jamais. Renvoie false si l'article n'existe pas.
+export async function modifierArticle(db, id, champs) {
+  const affectations = ['updated_at = now()']
+  const valeurs = [id]
+  for (const [cle, colonne] of Object.entries(COLONNES_MODIFIABLES)) {
+    if (!Object.hasOwn(champs, cle)) continue
+    valeurs.push(cle === 'title' ? champs.title.trim() : champs[cle])
+    affectations.push(`${colonne} = $${valeurs.length}`)
   }
+
+  return enTransaction(db, async (client) => {
+    const { rowCount } = await client.query(
+      `UPDATE articles SET ${affectations.join(', ')} WHERE id = $1`,
+      valeurs
+    )
+    if (rowCount === 0) return false
+
+    if (Object.hasOwn(champs, 'tags')) {
+      await client.query('DELETE FROM article_tags WHERE article_id = $1', [id])
+      await lierTags(client, id, normaliserTags(champs.tags))
+    }
+    return true
+  })
+}
+
+// Publication et dépublication : idempotentes (docs/api.md §4). Une seule requête suffit,
+// donc pas de transaction. Dans un UPDATE, les expressions lisent l'ANCIENNE ligne :
+// `updated_at` ne bouge que si le statut change vraiment, et `published_at` garde sa
+// première valeur pour toujours. Renvoient false si l'article n'existe pas.
+export async function publierArticle(db, id) {
+  const { rowCount } = await db.query(
+    `UPDATE articles
+     SET updated_at   = CASE WHEN status = 'published' THEN updated_at ELSE now() END,
+         status       = 'published',
+         published_at = COALESCE(published_at, now())
+     WHERE id = $1`,
+    [id]
+  )
+  return rowCount > 0
+}
+
+export async function depublierArticle(db, id) {
+  const { rowCount } = await db.query(
+    `UPDATE articles
+     SET updated_at = CASE WHEN status = 'draft' THEN updated_at ELSE now() END,
+         status     = 'draft'
+     WHERE id = $1`,
+    [id]
+  )
+  return rowCount > 0
+}
+
+// Les liens avec les tags disparaissent par cascade ; les tags eux-mêmes restent.
+export async function supprimerArticle(db, id) {
+  const { rowCount } = await db.query('DELETE FROM articles WHERE id = $1', [id])
+  return rowCount > 0
 }
