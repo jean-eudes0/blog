@@ -1,4 +1,5 @@
-import { nonTrouve } from "../lib/http-errors.js"
+import { nonTrouve } from '../lib/http-errors.js'
+import { chargerTagsPour } from '../lib/tags.js'
 
 
 // Routes publiques de lecture des articles (voir docs/api.md §4).
@@ -135,7 +136,7 @@ export default async function articlesRoutes(app) {
       )
       const article = rows[0]
       if (!article) {
-        throw nonTrouve ('Article introuvable')
+        throw nonTrouve('Article introuvable')
       }
 
       const tagsParArticle = await chargerTagsPour(app.db, [article.id])
@@ -143,27 +144,4 @@ export default async function articlesRoutes(app) {
       return { ...reste, tags: tagsParArticle.get(id) ?? [] }
     }
   )
-}
-
-// Charge les tags de plusieurs articles en une seule requête (pas une
-// requête par article), à partir de leurs id internes.
-async function chargerTagsPour(db, articleIds) {
-  const map = new Map()
-  if (articleIds.length === 0) return map
-
-  const { rows } = await db.query(
-    `SELECT at.article_id AS "articleId", t.name, t.slug
-     FROM article_tags at
-     JOIN tags t ON t.id = at.tag_id
-     WHERE at.article_id = ANY($1::int[])
-     ORDER BY t.name`,
-    [articleIds]
-  )
-
-  for (const row of rows) {
-    const liste = map.get(row.articleId) ?? []
-    liste.push({ name: row.name, slug: row.slug })
-    map.set(row.articleId, liste)
-  }
-  return map
 }

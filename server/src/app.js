@@ -7,6 +7,7 @@ import authRoutes from './routes/auth.js'
 import articlesRoutes from './routes/articles.js'
 import tagsRoutes from './routes/tags.js'
 import { tropDeRequetes } from './lib/http-errors.js'
+import adminArticlesRoutes from './routes/admin-articles.js'
 
 export function buildApp({
   db,
@@ -59,6 +60,7 @@ export function buildApp({
   app.register(authRoutes, { limiteLogin })
   app.register(articlesRoutes)
   app.register(tagsRoutes)
+  app.register(adminArticlesRoutes)
 
   if (nodeEnv === 'test') {
     app.get('/api/_boom', async () => {

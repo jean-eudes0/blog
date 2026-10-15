@@ -14,3 +14,4 @@ export const identifiantsInvalides = () => erreurHttp(401, 'INVALID_CREDENTIALS'
 export const interdit = (message = 'Accès refusé') => erreurHttp(403, 'FORBIDDEN', message)
 export const nonTrouve = (message = 'Ressource introuvable') => erreurHttp(404, 'NOT_FOUND', message)
 export const tropDeRequetes = () => erreurHttp(429, 'RATE_LIMITED', 'Trop de tentatives, réessaie dans une minute')
+export const conflit = (message = 'Conflit') => erreurHttp(409, 'CONFLICT', message)
