@@ -10,13 +10,14 @@ Document de référence de l'API. Il est écrit **avant** le code : chaque route
 | Origine | **Même origine** : Fastify sert l'API et le build React. En développement, Vite redirige `/api` vers `localhost:3000` | Pas de CORS, cookie `SameSite` simple |
 | Format | JSON uniquement (`Content-Type: application/json`) | Réduit aussi la surface CSRF |
 | Nommage JSON | `camelCase` (`publishedAt`), alors que la base reste en `snake_case` | Convention JavaScript ; la conversion se fait dans les requêtes SQL (`published_at AS publishedAt`) |
-| Dates | ISO 8601 UTC (`2026-09-28T10:00:00Z`) | Triable, sans ambiguïté de fuseau |
+| Dates | ISO 8601 UTC (`2026-09-28T10:00:00.000Z`) | Triable, sans ambiguïté de fuseau |
 | Versionnage | Aucun en V1 | Un seul client, tu contrôles les deux côtés. À ajouter le jour où un tiers consomme l'API |
 | Mise à jour | `PATCH` (partielle), pas `PUT` | On n'oblige pas le client à renvoyer tout l'article |
 
 ## 2. Authentification
 
 ### Le mécanisme : session opaque stockée en base
+
 
 1. À la connexion, le serveur génère un **jeton aléatoire de 32 octets** (`crypto.randomBytes`).
 2. Le jeton est envoyé dans un cookie. En base, on stocke uniquement son **empreinte SHA-256** dans la table `sessions` (voir `002_sessions.sql`).
@@ -53,11 +54,14 @@ Une session expirée est refusée à la lecture, mais sa ligne reste en base. Un
 - `@fastify/rate-limit` sur `POST /api/auth/login` : **5 tentatives par minute et par IP**.
 - Message d'erreur **identique** pour un email inconnu et pour un mauvais mot de passe.
 - Si l'email est inconnu, on exécute quand même une comparaison bcrypt factice, pour que le temps de réponse ne révèle pas l'existence du compte.
-- bcryptjs(version Javascript de bcrypt) avec un coût de 12. **Attention : bcrypt ignore silencieusement tout ce qui dépasse 72 octets** d'un mot de passe. À la création du compte, le script refuse donc un mot de passe de plus de 72 octets (pas 72 caractères : un accent en pèse 2), plutôt que de le tronquer sans le dire.
+- bcryptjs (version Javascript de bcrypt) avec un coût de 12. **Attention : bcrypt ignore silencieusement tout ce qui dépasse 72 octets** d'un mot de passe. À la création du compte, le script refuse donc un mot de passe de plus de 72 octets (pas 72 caractères : un accent en pèse 2), plutôt que de le tronquer sans le dire.
 
 ### Création du compte admin
 
 Il n'y a pas d'inscription publique. Le compte est créé par un script, hors de l'API :
+
+### Mot de passe oublié  
+`npm run reset-password -- moi@exemple.com` remplace le mot de passe d'un compte existant et ferme toutes ses sessions.
 
 ```bash
 npm run create-admin -- moi@exemple.com
@@ -110,7 +114,7 @@ Paramètres : `page` (entier ≥ 1, défaut 1), `limit` (entier 1 à 50, défaut
       "title": "Mon premier TP Fastify",
       "excerpt": "Ce que j'ai compris, et ce qui m'a bloqué.",
       "coverUrl": null,
-      "publishedAt": "2026-09-28T10:00:00Z",
+      "publishedAt": "2026-09-28T10:00:00.000Z",
       "readingTime": 4,
       "tags": [{ "name": "fastify", "slug": "fastify" }]
     }
@@ -135,8 +139,8 @@ Un article publié, avec son contenu Markdown brut.
   "excerpt": "...",
   "coverUrl": null,
   "contentMd": "# Bonjour\n...",
-  "publishedAt": "2026-09-28T10:00:00Z",
-  "updatedAt": "2026-09-29T08:12:00Z",
+  "publishedAt": "2026-09-28T10:00:00.000Z",
+  "updatedAt": "2026-09-29T08:12:00.000Z",
   "readingTime": 4,
   "tags": [{ "name": "fastify", "slug": "fastify" }]
 }
@@ -176,9 +180,13 @@ Tous les articles, brouillons compris. Paramètres : `page`, `limit`, `status` (
 
 Chaque élément : `id`, `slug`, `title`, `status`, `publishedAt`, `updatedAt`, `tags`.
 
+Tri : `updated_at DESC, id DESC` (le dernier modifié en premier). Même enveloppe `data` / `meta` que la liste publique. Une page au-delà de la fin renvoie `200` avec `data: []`. Une valeur invalide, un paramètre inconnu ou un `status` autre que `draft` / `published` renvoie `400`.
+
+page : entier de 1 à 100 000
+
 ### `GET /api/admin/articles/:id`
 
-L'article complet pour le formulaire d'édition : les champs de la vue publique plus `id`, `status`, `createdAt`.
+L'article complet pour le formulaire d'édition : `id`, `slug`, `title`, `status`, `excerpt`, `contentMd`, `coverUrl`, `publishedAt` (`null` pour un brouillon jamais publié), `createdAt`, `updatedAt`, `readingTime`, `tags`. Identifiant inconnu : `404`.
 
 ### `POST /api/admin/articles`
 
@@ -195,13 +203,15 @@ L'article complet pour le formulaire d'édition : les champs de la vue publique 
 - Toujours créé en **brouillon** : la publication est une action explicite.
 - Le `slug` est généré à partir du titre (voir règles métier) et **ne change plus** ensuite.
 - Réponse `201`, en-tête `Location: /api/admin/articles/12`, corps = l'article complet.
-- `409` `CONFLICT` seulement si la génération de slug échoue après plusieurs essais (cas très rare).
+- `409` `CONFLICT` seulement si la génération de slug échoue après 10 essais (cas très rare).
 
 ### `PATCH /api/admin/articles/:id`
 
 Champs modifiables, tous optionnels mais **au moins un** : `title`, `contentMd`, `excerpt`, `coverUrl` (peut valoir `null` pour l'enlever), `tags` (**remplace** la liste complète). Met `updated_at` à jour. Réponse `200` avec l'article complet.
 
 Champs interdits (`slug`, `status`, `publishedAt`, `id`, `authorId`) : refusés en `400` grâce à `additionalProperties: false`, **à condition de désactiver le comportement par défaut de Fastify** (voir §6). Le statut ne se change que par les routes d'action ci-dessous.
+
+Le `slug` ne change jamais, même si le titre change. `updated_at` est mis à jour même quand seuls les `tags` changent. Un corps vide `{}` renvoie `400`. Article inconnu : `404`. L'écriture est atomique : si l'enregistrement des tags échoue, rien n'est modifié.
 
 ### `POST /api/admin/articles/:id/publish` et `/unpublish`
 
@@ -210,14 +220,17 @@ Des **actions** plutôt qu'un champ `status` modifiable, parce que le serveur do
 - `publish` : passe en `published`. Si l'article n'a jamais été publié, `published_at` = maintenant. Sinon la date d'origine est conservée.
 - `unpublish` : repasse en `draft`, `published_at` est conservée.
 - Les deux sont **idempotentes** et renvoient `200` avec l'article.
+- `updated_at` ne change que si le statut change vraiment : un second appel ne modifie rien. Article inconnu : `404`. Ces routes n'attendent pas de corps.
 
 ### `DELETE /api/admin/articles/:id`
 
 `204`. Les liens avec les tags disparaissent par cascade. Les tags eux-mêmes restent.
 
+Article inconnu ou déjà supprimé : 404.
+
 ## 5. Erreurs
 
-Un seul format, produit par un gestionnaire d'erreurs central. Le code HTTP (parexemple `400`) est dans la ligne de statut de la réponse, pas dans le corps 
+Un seul format, produit par un gestionnaire d'erreurs central. Le code HTTP (par exemple `400`) est dans la ligne de statut de la réponse, pas dans le corps :
 
 ```json
 {
@@ -228,10 +241,9 @@ Un seul format, produit par un gestionnaire d'erreurs central. Le code HTTP (par
   }
 }
 ```
-- `details` n'apparaît que pour les erreurs de validation d'un schéma (champ manquant, type ou valeur invalide). 
-- Les `message` de `details` viennent de la bibliothèque de validation (Ajv)
- et sont ** en anglais ** pour l'instant.
-- Une requête mal formée avant même la validation (Json invalide, corps ou URL trop longs) renvoie `VALIDATION_ERROR` avec le message `Requête invalide`, sans `details`.
+- `details` n'apparaît que pour les erreurs de validation d'un schéma (champ manquant, type ou valeur invalide).
+- Les `message` de `details` viennent d'Ajv et sont **en anglais** pour l'instant.
+- Une requête mal formée avant même la validation (JSON invalide, corps ou URL trop longs) renvoie `VALIDATION_ERROR` avec le message `Requête invalide`, sans `details`.
 
 
 | HTTP | `code` | Quand |
@@ -242,6 +254,7 @@ Un seul format, produit par un gestionnaire d'erreurs central. Le code HTTP (par
 | 403 | `FORBIDDEN` | Origine refusée (CSRF), ou, plus tard, droits insuffisants |
 | 404 | `NOT_FOUND` | Ressource ou route inconnue |
 | 409 | `CONFLICT` | Conflit d'unicité non résolu |
+| 415 | `UNSUPPORTED_MEDIA_TYPE` | MimeType inconnu |
 | 429 | `RATE_LIMITED` | Trop de requêtes |
 | 500 | `INTERNAL_ERROR` | Erreur serveur : message générique, le détail va **uniquement** dans les logs |
 
@@ -255,14 +268,16 @@ Chaque route déclare un **schéma JSON** (Fastify + Ajv) pour `params`, `querys
 
 | Champ | Règle |
 |---|---|
-| `title` | texte, 1 à 150 caractères, après suppression des espaces autour |
+| `title` | texte, 1 à 150 caractères dont au moins un visible ; les espaces autour sont retirés à l'enregistrement |
 | `excerpt` | texte, 0 à 300 caractères |
-| `contentMd` | texte, 1 à 100 000 caractères |
+| `contentMd` | texte, 1 à 100 000 caractères dont au moins un visible |
 | `coverUrl` | `null` ou URL commençant par `http://` ou `https://`, 500 caractères max |
 | `tags` | tableau de 0 à 5 textes de 1 à 30 caractères |
 | `email` | format email, 254 caractères max |
 | `password` | texte, 1 à 200 caractères à la connexion (minimum 12 caractères et maximum 72 octets vérifiés seulement à la création du compte) |
 | `page`, `limit` | entiers, voir §4 |
+| `id` (dans l'URL) | entier de 1 à 2 147 483 647 : au-delà, la requête SQL échouerait en `500` |
+| tous les textes | le caractère NUL (`\u0000`) est refusé en `400` : PostgreSQL ne l'accepte pas |
 
 Le `coverUrl` restreint à `http(s)` n'est pas décoratif : une URL de type `javascript:...` injectée dans un `<img>` ou un lien serait une faille XSS.
 
@@ -289,6 +304,12 @@ Le `coverUrl` restreint à `http(s)` n'est pas décoratif : une URL de type `jav
 - Un article dépublié garde donc sa `published_at`. Ce que garantit la base, c'est `status = 'draft' OR published_at IS NOT NULL`, et non l'inverse.
 - Le descriptif de la colonne dans `database.md` doit se lire : "NULL tant que l'article n'a jamais été publié".
 
+**Slug** : « les ligatures œ, æ, ß deviennent oe, ae, ss avant le retrait des accents. Pour un tag, le repli est tag et non article. »
+
+**Tags** : « les espaces autour sont retirés et les espaces multiples compactés ; un nom vide est ignoré ; deux noms de même slug dans une requête (React, react) donnent un seul tag, avec la première graphie ; un tag qui existe déjà est réutilisé tel quel. PATCH remplace la liste complète ; les tags sans article restent en base. »
+
+**Publication** : « modifier un article publié par PATCH le laisse publié, avec la même published_at et le même slug.
+
 ## 8. Sécurité : liste de contrôle
 
 - [x] Requêtes SQL **préparées** uniquement, jamais de concaténation de texte
@@ -299,14 +320,17 @@ Le `coverUrl` restreint à `http(s)` n'est pas décoratif : une URL de type `jav
 - [x] Limitation de débit sur la connexion
 - [x] Message et temps de réponse identiques pour email inconnu et mauvais mot de passe
 - [x] Vérification de l'`Origin` sur les requêtes qui modifient des données
-- [ ] `coverUrl` limité à `http(s)`
+- [x] `coverUrl` limité à `http(s)`
 - [ ] Markdown converti puis **nettoyé côté client** (DOMPurify), plus une politique CSP via `@fastify/helmet`
 - [x] Taille du corps limitée (`bodyLimit` à 512 Ko : `contentMd` peut atteindre 100 000 caractères, soit jusqu'à 200 Ko avec des accents, plus l'échappement JSON)
 - [x] Le cookie et les mots de passe **masqués dans les logs** (option `redact` de pino)
 - [x] Secrets dans `.env`, jamais commités ; un `.env.example` documente les variables
 - [x] `TRUST_PROXY`  renseigné avec une liste d'adresses ou de plages, jamais `true` : sinon un client peut forger son adresse IP 
 - [x] Pas d'inscription publique
-- [x] Sur Render, il faut aussi les plages de Cloudfare 
+- [x] Sur Render, `TRUST_PROXY` contient aussi les plages de Cloudflare (valeur dans le README) ; vérifié en production le 12/10/2026
+- [x] Caractère NUL refusé en `400`
+- [x] Identifiants d'URL bornés à l'entier PostgreSQL (`400`, pas `500`)
+- [x] Session vérifiée avant la validation sur les routes admin (`401` avant `400`)
 
 ## 9. Structure du code
 
@@ -317,13 +341,15 @@ server/
 │   └── 002_sessions.sql
 ├── scripts/
 │   └── create-admin.js
+│   └── seed-demo .js
+│   └── reset-password.js    
 ├── src/
 │   ├── app.js            # buildApp({ db }) : construit l'app SANS écouter de port
 │   ├── server.js         # démarre : lit la config, ouvre la base, écoute
 │   ├── config.js         # variables d'environnement, validées au démarrage
 │   ├── db.js
 │   ├── plugins/           # chacun enveloppé dans fastify-plugin (voir ci-dessous)
-│   │   ├── origine.js             
+│   │   ├── origine.js    # contrôle d'origine (CSRF)         
 │   │   ├── errors.js     # gestionnaire d'erreurs central
 │   │   └── auth.js       # lecture du cookie, chargement de la session
 │   ├── routes/
@@ -332,11 +358,14 @@ server/
 │   │   ├── tags.js
 │   │   └── admin-articles.js
 │   └── lib/
+│       ├── articles-admin.js   # lecture et écriture admin (transactions)
 │       ├── http-errors.js 
 │       ├── purge-sessions.js 
 │       ├── users.js      # gestion des utilisateurs
 │       ├── slug.js       # fonction pure, facile à tester
+│       ├── tags.js       # chargement des tags de plusieurs articles
 │       └── sessions.js
+
 
 └── tests/
 ```
@@ -352,7 +381,7 @@ Dépendances à ajouter : `fastify-plugin` (dès l'étape 1), puis `@fastify/coo
 
 ## 10. Ce qui est volontairement hors V1
 
-Recherche et filtre par tag (V1.5), rôles multiples, CRUD de tags, édition du slug d'un brouillon, réinitialisation de mot de passe, versionnage d'API, prolongation glissante des sessions.
+Recherche et filtre par tag (V1.5), rôles multiples, CRUD de tags, édition du slug d'un brouillon,réinitialisation de mot de passe par e-mail ou via l’API (le script reset-password existe en ligne de commande), versionnage d'API, prolongation glissante des sessions.
 
 ## 11. Limitation des tentatives de connexion
 
