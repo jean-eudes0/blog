@@ -78,8 +78,7 @@ comme `blog_test` sur Neon). Elle est vidée à chaque test : ne mets jamais dan
 ```bash
 npm test
 ```
-
-Routes disponibles pour l'instant : `GET /api/health`, `GET /api/articles`, `GET /api/articles/:slug`, `GET /api/tags`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`.
+Routes disponibles pour l'instant : `GET /api/health`, `GET /api/articles`, `GET /api/articles/:slug`, `GET /api/tags`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`, puis, avec une session admin : `GET /api/admin/articles`, `GET /api/admin/articles/:id`, `POST /api/admin/articles`, `PATCH /api/admin/articles/:id`, `POST /api/admin/articles/:id/publish`, `POST /api/admin/articles/:id/unpublish`, `DELETE /api/admin/articles/:id`.
 
 Créer le compte admin (il n'y a pas d'inscription publique) :
 
