@@ -321,7 +321,8 @@ Le `coverUrl` restreint à `http(s)` n'est pas décoratif : une URL de type `jav
 - [x] Message et temps de réponse identiques pour email inconnu et mauvais mot de passe
 - [x] Vérification de l'`Origin` sur les requêtes qui modifient des données
 - [x] `coverUrl` limité à `http(s)`
-- [ ] Markdown converti puis **nettoyé côté client** (DOMPurify), plus une politique CSP via `@fastify/helmet`
+- [ ] Markdown converti puis **nettoyé côté client** (DOMPurify), avec un test qui vérifie qu'un `<script>` ou un `onerror` ne survit pas (étape 6)
+- [ ] Politique CSP via `@fastify/helmet` (étape 9)
 - [x] Taille du corps limitée (`bodyLimit` à 512 Ko : `contentMd` peut atteindre 100 000 caractères, soit jusqu'à 200 Ko avec des accents, plus l'échappement JSON)
 - [x] Le cookie et les mots de passe **masqués dans les logs** (option `redact` de pino)
 - [x] Secrets dans `.env`, jamais commités ; un `.env.example` documente les variables
