@@ -13,7 +13,7 @@
 
 import { loadConfig } from '../src/config.js'
 import { openDb } from '../src/db.js'
-import { slugify } from '../src/lib/slug.js'
+import { slugifier } from '../src/lib/slug.js'
 
 const EMAIL_DEMO = 'demo@exemple.local'
 const HASH_FACTICE = 'DEMO_NE_PEUT_PAS_SERVIR_A_SE_CONNECTER'
@@ -75,7 +75,7 @@ async function obtenirOuCreerUtilisateurDemo(db) {
 }
 
 async function obtenirOuCreerTag(client, nom) {
-  const slug = slugify(nom)
+  const slug = slugifier(nom)
   const { rows } = await client.query('SELECT id FROM tags WHERE slug = $1', [slug])
   if (rows[0]) return rows[0].id
 
