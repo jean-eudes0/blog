@@ -14,3 +14,40 @@ main {
   margin: 0 auto;
   padding: 1.5rem 1rem;
 }
+
+.entete {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 1rem 1rem 0;
+}
+
+.entete a {
+  font-weight: 700;
+  text-decoration: none;
+  color: inherit;
+}
+
+.liste-articles {
+  list-style: none;
+  padding: 0;
+}
+
+.liste-articles li {
+  margin-bottom: 1.5rem;
+}
+
+.liste-articles h2 {
+  margin-bottom: 0.25rem;
+}
+
+.meta {
+  margin-top: 0;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2rem;
+}
