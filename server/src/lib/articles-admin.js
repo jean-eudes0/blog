@@ -79,7 +79,11 @@ export async function listerArticlesAdmin(db, { page, limit, status }) {
 // ON CONFLICT DO NOTHING : un tag existant est réutilisé, sans erreur ni transaction avortée.
 export async function lierTags(client, articleId, tags) {
   if (tags.length === 0) return
-  for (const { name, slug } of tags) {
+  // Toujours dans l'ordre des slugs : deux transactions qui créent les mêmes tags dans un ordre
+  // différent (alpha puis beta / beta puis alpha) s'attendraient l'une l'autre : interblocage
+  // PostgreSQL (40P01), donc une erreur 500. Avec un ordre commun, l'une attend simplement l'autre.
+  const tries = [...tags].sort((a, b) => (a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0))
+  for (const { name, slug } of tries) {
     await client.query('INSERT INTO tags (name, slug) VALUES ($1, $2) ON CONFLICT DO NOTHING', [name, slug])
   }
   await client.query(
@@ -87,6 +91,25 @@ export async function lierTags(client, articleId, tags) {
      SELECT $1, id FROM tags WHERE slug = ANY($2::text[])`,
     [articleId, tags.map((t) => t.slug)]
   )
+}
+
+// Espace du verrou des slugs (distinct de celui des migrations, db.js : 727384).
+const VERROU_SLUGS = 727385
+
+// Plus grand suffixe déjà pris pour ce slug de base, plus un (le slug nu compte pour 1).
+// Évite de tâtonner -2, -3, -4... : avec 50 articles du même titre, on trouve -51 en une requête.
+// `base` ne contient que [a-z0-9-] : sans danger dans une expression régulière.
+async function prochainNumero(client, base) {
+  const { rows } = await client.query('SELECT slug FROM articles WHERE slug = $1 OR slug ~ $2', [
+    base,
+    `^${base}-[0-9]+$`,
+  ])
+  let max = 1
+  for (const { slug } of rows) {
+    const n = slug === base ? 1 : Number(slug.slice(base.length + 1))
+    if (n > max) max = n
+  }
+  return max + 1
 }
 
 // Crée un brouillon, ses tags et leurs liens dans UNE transaction.
@@ -98,16 +121,22 @@ export async function creerArticle(db, { authorId, title, contentMd, excerpt = '
   const tagsNormalises = normaliserTags(tags)
 
   return enTransaction(db, async (client) => {
+    // Verrou de transaction propre à ce slug de base : deux créations simultanées du même titre
+    // passent l'une après l'autre, la seconde voit alors le slug déjà pris. Libéré au COMMIT/ROLLBACK.
+    await client.query('SELECT pg_advisory_xact_lock($1, hashtext($2))', [VERROU_SLUGS, base])
+
     let id = null
-    for (let essai = 1; essai <= 10 && id === null; essai++) {
+    let numero = 1
+    for (let essai = 1; essai <= 5 && id === null; essai++) {
       const { rows } = await client.query(
         `INSERT INTO articles (title, slug, excerpt, content_md, cover_url, author_id)
          VALUES ($1, $2, $3, $4, $5, $6)
          ON CONFLICT (slug) DO NOTHING
          RETURNING id`,
-        [titre, slugAvecSuffixe(base, essai), excerpt, contentMd, coverUrl, authorId]
+        [titre, slugAvecSuffixe(base, numero), excerpt, contentMd, coverUrl, authorId]
       )
       if (rows[0]) id = rows[0].id
+      else numero = await prochainNumero(client, base)
     }
     if (id === null) throw conflit('Impossible de générer un slug unique')
 
