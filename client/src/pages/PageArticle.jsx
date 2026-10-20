@@ -32,7 +32,9 @@ export default function PageArticle() {
 
   if (chargement) return <p>Chargement…</p>
   // Un slug inconnu et un brouillon renvoient le même 404 : on affiche la même page.
-  if (erreur?.statut === 404) return <NonTrouve />
+  // Un slug mal formé (trop long : 414, invalide : 400) est aussi, pour le visiteur, une page qui n'existe pas.
+  // Seul le 429 (trop de requêtes) est une vraie erreur à afficher.
+  if (erreur && erreur.statut >= 400 && erreur.statut < 500 && erreur.statut !== 429) return <NonTrouve />
   if (erreur) return <p role="alert">Erreur : {erreur.message}</p>
 
   return (
