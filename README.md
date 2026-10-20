@@ -155,7 +155,7 @@ Le site s'ouvre sur http://localhost:5173. Vite redirige les appels `/api` vers 
 `http://127.0.0.1:3000` (voir `client/vite.config.js`) : le navigateur ne voit qu'une seule
 origine, donc pas de CORS. L'API doit donc tourner sur le port 3000, qui est le port par défaut.
 
-Avant un commit : `npm run lint` puis `npm run build`.
+Avant un commit : `npm run lint`, `npm run test`, puis `npm run build`.
 
-Pages : `/`, `/articles/:slug`, `/connexion`, `/admin ` (réservée à l’admin, l’espace de gestion arrive à l’étape 8)
+Pages : `/`, `/articles/:slug`, `/connexion` ; une fois connecté : `/admin` (liste, filtre, publication, suppression), `/admin/articles/nouveau` et `/admin/articles/:id` (modification).
 

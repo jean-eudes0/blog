@@ -3,10 +3,9 @@ import { Link, useParams } from 'react-router'
 import { lireArticle } from '../lib/api.js'
 import { rendreMarkdown } from '../lib/markdown.js'
 import NonTrouve from './NonTrouve.jsx'
+import { formaterDate } from '../lib/dates.js'
 
-function formaterDate(iso) {
-  return new Date(iso).toLocaleDateString('fr-FR', { dateStyle: 'long' })
-}
+
 
 export default function PageArticle() {
   const { slug } = useParams()

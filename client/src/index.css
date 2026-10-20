@@ -111,3 +111,120 @@ button.lien {
   color: #1a0dab;
   text-decoration: underline;
 }
+
+/* --- Espace admin --- */
+.barre-titre {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+a.bouton,
+button {
+  padding: 0.35rem 0.8rem;
+}
+
+a.bouton {
+  border: 1px solid #888;
+  border-radius: 4px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.filtres {
+  display: flex;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.filtres a[aria-current='page'] {
+  font-weight: 700;
+  color: inherit;
+  text-decoration: none;
+}
+
+.table-admin {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-admin th,
+.table-admin td {
+  padding: 0.6rem 0.4rem;
+  border-bottom: 1px solid #ddd;
+  text-align: left;
+  vertical-align: top;
+}
+
+.table-admin[aria-busy='true'] {
+  opacity: 0.6;
+}
+
+.table-admin .meta {
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.badge {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.badge.publie {
+  background: #d8f3dc;
+  color: #1b4332;
+}
+
+.badge.brouillon {
+  background: #fff3bf;
+  color: #5c4400;
+}
+
+button.danger {
+  color: #b00020;
+  border-color: #b00020;
+}
+
+.formulaire-article {
+  max-width: none;
+}
+
+.champ {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.champ textarea,
+.champ input {
+  padding: 0.5rem;
+  font: inherit;
+}
+
+.champ textarea {
+  resize: vertical;
+}
+
+.aide {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.succes {
+  padding: 0.5rem 0.75rem;
+  background: #d8f3dc;
+  color: #1b4332;
+  border-radius: 4px;
+}
+
+.barre-actions {
+  margin: 1rem 0 0.25rem;
+}

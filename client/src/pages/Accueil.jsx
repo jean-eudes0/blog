@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { listerArticles } from '../lib/api.js'
+import { formaterDate } from '../lib/dates.js'
 
 const PAR_PAGE = 10
 
@@ -14,9 +15,7 @@ function lienPage(numero) {
   return numero === 1 ? '/' : `/?page=${numero}`
 }
 
-function formaterDate(iso) {
-  return new Date(iso).toLocaleDateString('fr-FR', { dateStyle: 'long' })
-}
+
 
 export default function Accueil() {
   const [params] = useSearchParams()
