@@ -19,6 +19,15 @@ main {
   max-width: 42rem;
   margin: 0 auto;
   padding: 1rem 1rem 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.entete nav {
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
 }
 
 .entete a {
@@ -65,4 +74,40 @@ main {
 
 .contenu code {
   font-size: 0.95em;
+}
+
+.formulaire {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 22rem;
+}
+
+.formulaire label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.formulaire input {
+  padding: 0.5rem;
+  font: inherit;
+}
+
+.erreur {
+  margin: 0;
+  color: #b00020;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+button.lien {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #1a0dab;
+  text-decoration: underline;
 }
