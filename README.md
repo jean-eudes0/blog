@@ -54,7 +54,7 @@ Je suis le seul auteur : un unique rôle admin gère les articles, pas de compte
 
 ## Lancer le projet
 
-Prérequis : Node.js 22 ou plus, et une base PostgreSQL (locale, Neon ou Supabase).
+Prérequis : Node.js 22.22 ou plus (exigé par le client), et une base PostgreSQL (locale, Neon ou Supabase).
 
 ```bash
 cd server
@@ -78,6 +78,7 @@ comme `blog_test` sur Neon). Elle est vidée à chaque test : ne mets jamais dan
 ```bash
 npm test
 ```
+
 Routes disponibles pour l'instant : `GET /api/health`, `GET /api/articles`, `GET /api/articles/:slug`, `GET /api/tags`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`, puis, avec une session admin : `GET /api/admin/articles`, `GET /api/admin/articles/:id`, `POST /api/admin/articles`, `PATCH /api/admin/articles/:id`, `POST /api/admin/articles/:id/publish`, `POST /api/admin/articles/:id/unpublish`, `DELETE /api/admin/articles/:id`.
 
 Créer le compte admin (il n'y a pas d'inscription publique) :
@@ -85,6 +86,7 @@ Créer le compte admin (il n'y a pas d'inscription publique) :
 ```bash
 npm run create-admin -- moi@exemple.com
 ```
+
 Mot de passe oublié (pas de réinitialisation par e-mail en V1) : le mot de passe est lu
 sur l'entrée standard, saisi deux fois, jamais en argument.
 
@@ -122,7 +124,7 @@ temps en temps et à comparer avec la valeur dans Render.
 Vérification : provoquer un échec de connexion sur le site, puis lire `"ip"` dans les
 journaux Render. Ce doit être ton adresse publique, jamais une adresse Cloudflare (`172.64.` à `172.71.`).
 
-### Créer ou reinitialiser le compte admin en production
+### Créer ou réinitialiser le compte admin en production
 
 En production, la variable du terminal l'emporte sur `.env` : vérifie la base visée avant de lancer le script.
 
@@ -137,4 +139,21 @@ Remove-Item Env:DATABASE_URL
 ```
 
 Mot de passe oublié (pas de réinitialisation par e-mail en V1) : même commande avec `scripts/reset-password.js`. Les sessions ouvertes du compte sont alors supprimées.
+
+
+### Lancer le client (React)
+
+Dans un second terminal, pendant que l'API tourne (`npm run dev` dans `server`) :
+
+```bash
+cd client
+npm install
+npm run dev
+```
+
+Le site s'ouvre sur http://localhost:5173. Vite redirige les appels `/api` vers l'API sur
+`http://127.0.0.1:3000` (voir `client/vite.config.js`) : le navigateur ne voit qu'une seule
+origine, donc pas de CORS. L'API doit donc tourner sur le port 3000, qui est le port par défaut.
+
+Avant un commit : `npm run lint` puis `npm run build`.
 
