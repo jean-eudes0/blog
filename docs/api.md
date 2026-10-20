@@ -290,7 +290,7 @@ Le `coverUrl` restreint à `http(s)` n'est pas décoratif : une URL de type `jav
 2. suppression des accents (`normalize('NFD')` puis retrait des marques diacritiques) : "Déclic" devient "declic" ;
 3. tout ce qui n'est pas une lettre ou un chiffre devient `-`, tirets répétés fusionnés, tirets de début et de fin retirés ;
 4. si le résultat est vide, repli sur `article` ;
-5. en cas de doublon, suffixe `-2`, `-3`... ;
+5. en cas de doublon, suffixe égal au plus grand numéro existant plus un (`-2`, `-3`...), calculé sous verrou consultatif (`pg_advisory_xact_lock`) : deux créations simultanées du même titre ne se marchent pas dessus ;
 6. le résultat respecte forcément `slug = lower(slug)` (contrainte de la base).
 
 **Écritures atomiques** : créer ou modifier un article touche `articles`, `tags` et `article_tags`. Tout cela se fait dans **une seule transaction PostgreSQL** (`BEGIN` / `COMMIT` / `ROLLBACK` sur un client dédié du pool `pg`) : si l'insertion d'un lien échoue, l'article n'est pas créé à moitié.
@@ -369,6 +369,14 @@ server/
 
 
 └── tests/
+
+client/
+├── src/
+│   ├── auth/         # contexte, fournisseur et hook d'authentification
+│   ├── components/   # Layout, RoutePrivee, ErrorBoundary
+│   ├── lib/          # api.js (appels à l'API), markdown.js (Markdown nettoyé)
+│   └── pages/        # Accueil, PageArticle, Connexion, Admin, NonTrouve
+└── vite.config.js    # proxy /api vers le serveur en développement
 ```
 
 Deux points qui comptent :

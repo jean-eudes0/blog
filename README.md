@@ -157,3 +157,5 @@ origine, donc pas de CORS. L'API doit donc tourner sur le port 3000, qui est le 
 
 Avant un commit : `npm run lint` puis `npm run build`.
 
+Pages : `/`, `/articles/:slug`, `/connexion`, `/admin ` (réservée à l’admin, l’espace de gestion arrive à l’étape 8)
+

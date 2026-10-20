@@ -113,8 +113,9 @@ async function prochainNumero(client, base) {
 }
 
 // Crée un brouillon, ses tags et leurs liens dans UNE transaction.
-// Le slug est cherché avec ON CONFLICT DO NOTHING : un doublon ne fait pas échouer
-// la transaction, on essaie simplement le suffixe suivant (-2, -3...).
+// Le verrou ci-dessous met en file les créations du même titre ; ON CONFLICT DO NOTHING
+// évite qu'un doublon fasse échouer la transaction, et prochainNumero() calcule le
+// suffixe suivant (le plus grand numéro existant, plus un).
 export async function creerArticle(db, { authorId, title, contentMd, excerpt = '', coverUrl = null, tags = [] }) {
   const titre = title.trim()
   const base = slugifier(titre)
