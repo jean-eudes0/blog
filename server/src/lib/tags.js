@@ -1,4 +1,4 @@
-// Charger les tqgs de plusieurs articles en une seule requête (pas une 
+// Charge les tags de plusieurs articles en une seule requête (pas une 
 // requête par article), à partir de leurs id internes.
 // Partagé par les routes publiques et par les routes admin.
 export async function chargerTagsPour(db, articleIds) {

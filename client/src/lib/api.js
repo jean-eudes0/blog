@@ -55,3 +55,19 @@ export function listerArticles({ page = 1, limit = 10 } = {}, signal) {
 export function lireArticle(slug, signal) {
   return appelApi(`/articles/${encodeURIComponent(slug)}`, { signal })
 }
+
+// --- Authentification (docs/api.md §2) ---
+
+// 200 { user } si une session est ouverte, sinon ErreurApi avec statut 401.
+export function utilisateurCourant(signal) {
+  return appelApi('/auth/me', { signal })
+}
+
+export function seConnecter(email, password) {
+  return appelApi('/auth/login', { methode: 'POST', corps: { email, password } })
+}
+
+// Sans corps : l'API répond 204 même sans session (route idempotente).
+export function seDeconnecter() {
+  return appelApi('/auth/logout', { methode: 'POST' })
+}
