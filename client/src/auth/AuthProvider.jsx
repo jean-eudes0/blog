@@ -45,9 +45,13 @@ export default function AuthProvider({ children }) {
     setEtat({ statut: 'anonyme', user: null })
   }, [])
 
+  // L'API a répondu 401 pendant que l'on se croyait connecté (session expirée ou supprimée) :
+  // on passe en anonyme, la route privée renvoie alors vers /connexion.
+  const expirerSession = useCallback(() => setEtat({ statut: 'anonyme', user: null }), [])
+
   const valeur = useMemo(
-    () => ({ ...etat, connecter, deconnecter, reessayer }),
-    [etat, connecter, deconnecter, reessayer],
+    () => ({ ...etat, connecter, deconnecter, reessayer, expirerSession }),
+    [etat, connecter, deconnecter, reessayer, expirerSession],
   )
 
   return <ContexteAuth value={valeur}>{children}</ContexteAuth>

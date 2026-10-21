@@ -71,3 +71,35 @@ export function seConnecter(email, password) {
 export function seDeconnecter() {
   return appelApi('/auth/logout', { methode: 'POST' })
 }
+
+// --- Administration des articles (docs/api.md §4) : toutes ces routes exigent une session ---
+
+export function listerArticlesAdmin({ page = 1, limit = 10, status } = {}, signal) {
+  const requete = new URLSearchParams({ page, limit })
+  if (status) requete.set('status', status)
+  return appelApi(`/admin/articles?${requete}`, { signal })
+}
+
+export function lireArticleAdmin(id, signal) {
+  return appelApi(`/admin/articles/${encodeURIComponent(id)}`, { signal })
+}
+
+export function creerArticle(donnees) {
+  return appelApi('/admin/articles', { methode: 'POST', corps: donnees })
+}
+
+export function modifierArticle(id, donnees) {
+  return appelApi(`/admin/articles/${encodeURIComponent(id)}`, { methode: 'PATCH', corps: donnees })
+}
+
+export function publierArticle(id) {
+  return appelApi(`/admin/articles/${encodeURIComponent(id)}/publish`, { methode: 'POST' })
+}
+
+export function depublierArticle(id) {
+  return appelApi(`/admin/articles/${encodeURIComponent(id)}/unpublish`, { methode: 'POST' })
+}
+
+export function supprimerArticle(id) {
+  return appelApi(`/admin/articles/${encodeURIComponent(id)}`, { methode: 'DELETE' })
+}
