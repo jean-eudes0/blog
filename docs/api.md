@@ -271,7 +271,7 @@ Chaque route déclare un **schéma JSON** (Fastify + Ajv) pour `params`, `querys
 | `title` | texte, 1 à 150 caractères dont au moins un visible ; les espaces autour sont retirés à l'enregistrement |
 | `excerpt` | texte, 0 à 300 caractères |
 | `contentMd` | texte, 1 à 100 000 caractères dont au moins un visible |
-| `coverUrl` | `null` ou URL commençant par `http://` ou `https://`, 500 caractères max |
+| `coverUrl` | `null` ou URL commençant par `https://`, 500 caractères max |
 | `tags` | tableau de 0 à 5 textes de 1 à 30 caractères |
 | `email` | format email, 254 caractères max |
 | `password` | texte, 1 à 200 caractères à la connexion (minimum 12 caractères et maximum 72 octets vérifiés seulement à la création du compte) |
@@ -279,7 +279,7 @@ Chaque route déclare un **schéma JSON** (Fastify + Ajv) pour `params`, `querys
 | `id` (dans l'URL) | entier de 1 à 2 147 483 647 : au-delà, la requête SQL échouerait en `500` |
 | tous les textes | le caractère NUL (`\u0000`) est refusé en `400` : PostgreSQL ne l'accepte pas |
 
-Le `coverUrl` restreint à `http(s)` n'est pas décoratif : une URL de type `javascript:...` injectée dans un `<img>` ou un lien serait une faille XSS.
+Le `coverUrl` restreint à `https` n'est pas décoratif : une URL de type `javascript:...` injectée dans un `<img>` ou un lien serait une faille XSS, et un navigateur bloque de toute façon une image `http://` sur un site servi en `https://`.
 
 **Des schémas de réponse** sont aussi déclarés. Fastify ne sérialise alors que les champs listés : même si une requête SQL ramène par erreur `password_hash`, il ne sortira jamais de l'API.
 
@@ -320,7 +320,7 @@ Le `coverUrl` restreint à `http(s)` n'est pas décoratif : une URL de type `jav
 - [x] Limitation de débit sur la connexion
 - [x] Message et temps de réponse identiques pour email inconnu et mauvais mot de passe
 - [x] Vérification de l'`Origin` sur les requêtes qui modifient des données
-- [x] `coverUrl` limité à `http(s)`
+- [x] `coverUrl` limité à `https`
 - [ ] Markdown converti puis **nettoyé côté client** (DOMPurify), avec un test qui vérifie qu'un `<script>` ou un `onerror` ne survit pas (étape 6)
 - [ ] Politique CSP via `@fastify/helmet` (étape 9)
 - [x] Taille du corps limitée (`bodyLimit` à 512 Ko : `contentMd` peut atteindre 100 000 caractères, soit jusqu'à 200 Ko avec des accents, plus l'échappement JSON)

@@ -51,17 +51,17 @@ const articleListeSchema = {
 // Chaque pattern refuse aussi le caractère NUL (U+0000), qui ferait échouer PostgreSQL :
 // sans cela, il partirait en 500 au lieu d'un 400.
 //   - non vide : au moins un caractère qui n'est pas un espace ;
-//   - coverUrl : commence par http:// ou https:// (jamais javascript: ni data: : faille XSS).
-// Les mêmes champs servent à la création (POST) et à la modification (PATCH).
+//   - coverUrl : commence par https:// (jamais http:, javascript: ni data: : faille XSS, et un navigateur
+//     bloque de toute façon une image http:// sur un site en https://).
 const SANS_NUL = '^[^\\u0000]*$'
 const NON_VIDE_SANS_NUL = '^(?=[\\s\\S]*\\S)[^\\u0000]*$'
-const URL_HTTP_SANS_NUL = '^https?://[^\\u0000]*$'
+const URL_HTTPS_SANS_NUL = '^https://[^\\u0000]*$'
 
 const champsArticle = {
   title: { type: 'string', minLength: 1, maxLength: 150, pattern: NON_VIDE_SANS_NUL },
   excerpt: { type: 'string', maxLength: 300, pattern: SANS_NUL },
   contentMd: { type: 'string', minLength: 1, maxLength: 100000, pattern: NON_VIDE_SANS_NUL },
-  coverUrl: { type: ['string', 'null'], maxLength: 500, pattern: URL_HTTP_SANS_NUL },
+  coverUrl: { type: ['string', 'null'], maxLength: 500, pattern: URL_HTTPS_SANS_NUL },
   tags: { type: 'array', maxItems: 5, items: { type: 'string', minLength: 1, maxLength: 30, pattern: SANS_NUL } },
 }
 

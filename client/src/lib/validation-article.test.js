@@ -53,10 +53,10 @@ test('extrait : au plus 300 caractères', () => {
   assert.ok(validerArticle(valide({ excerpt: 'e'.repeat(300 + 1) })).excerpt)
 })
 
-test('coverUrl : vide ou http(s) ; jamais javascript:, data:, ftp:, espaces, adresse sans protocole', () => {
+test('coverUrl : vide ou https ; jamais http:, javascript:, data:, ftp:, espaces, adresse sans protocole', () => {
   assert.deepEqual(validerArticle(valide({ coverUrl: '' })), {})
-  assert.deepEqual(validerArticle(valide({ coverUrl: 'http://x.com/a' })), {})
-  for (const url of ['javascript:alert(1)', 'data:text/html,x', 'ftp://x.com/a', 'x.com/a', 'https://a b.com', 'https://', '//x.com']) {
+  assert.deepEqual(validerArticle(valide({ coverUrl: 'https://x.com/a' })), {})
+  for (const url of ['http://x.com/a', 'javascript:alert(1)', 'data:text/html,x', 'ftp://x.com/a', 'x.com/a', 'https://a b.com', 'https://', '//x.com']) {
     assert.ok(validerArticle(valide({ coverUrl: url })).coverUrl, url)
   }
   const base = 'https://x.com/' // 14 caractères

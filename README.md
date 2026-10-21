@@ -151,8 +151,8 @@ npm install
 npm run dev
 ```
 
-Le site s'ouvre sur http://localhost:5173. Vite redirige les appels `/api` vers l'API sur
-`http://127.0.0.1:3000` (voir `client/vite.config.js`) : le navigateur ne voit qu'une seule
+Le site s'ouvre sur https://localhost:5173. Vite redirige les appels `/api` vers l'API sur
+`https://127.0.0.1:3000` (voir `client/vite.config.js`) : le navigateur ne voit qu'une seule
 origine, donc pas de CORS. L'API doit donc tourner sur le port 3000, qui est le port par défaut.
 
 Avant un commit : `npm run lint`, `npm run test`, puis `npm run build`.
