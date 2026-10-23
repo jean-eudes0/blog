@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22.9<23 "
+    "node": ">=22.9 <23 "
   },
   "scripts": {
     "test": "node --env-file-if-exists=.env.test --test --test-concurrency=1",
@@ -19,7 +19,9 @@
   "license": "ISC",
   "dependencies": {
     "@fastify/cookie": "^11.1.2",
+    "@fastify/helmet": "^13.2.0",
     "@fastify/rate-limit": "^11.2.0",
+    "@fastify/static": "^10.1.7",
     "bcryptjs": "^3.0.3",
     "fastify": "^5.12.5",
     "fastify-plugin": "^6.0.0",
