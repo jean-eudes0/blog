@@ -3,11 +3,14 @@ import rateLimit from '@fastify/rate-limit'
 import errorsPlugin from './plugins/errors.js'
 import authPlugin from './plugins/auth.js'
 import originePlugin from './plugins/origine.js'
+import clientPlugin from './plugins/client.js'
 import authRoutes from './routes/auth.js'
 import articlesRoutes from './routes/articles.js'
 import tagsRoutes from './routes/tags.js'
 import { tropDeRequetes } from './lib/http-errors.js'
 import adminArticlesRoutes from './routes/admin-articles.js'
+import securitePlugin from './plugins/securite.js'
+
 
 export function buildApp({
   db,
@@ -18,6 +21,8 @@ export function buildApp({
   trustProxy = false,
   // Limite de tentatives sur la connexion : 5 par minute et par IP.
   limiteLogin = { max: 5, timeWindow: '1 minute' },
+    // Dossier du build React (client/dist). null = l'API seule : tests, et développement avec Vite.
+  clientDir = null,
 } = {}) {
   const app = Fastify({
     logger: {
@@ -44,7 +49,9 @@ export function buildApp({
   })
 
   app.decorate('db', db)
-  app.register(errorsPlugin)
+  // En premier : ses en-têtes s'ajoutent à TOUTES les réponses (pages, API, erreurs).
+  app.register(securitePlugin, { production: nodeEnv === 'production' })
+  app.register(errorsPlugin, { clientDir })
   app.register(originePlugin, { publicUrl })
   app.register(authPlugin, { secure: nodeEnv === 'production' })
   // global: false : la limitation ne s'applique qu'aux routes qui la demandent.
@@ -61,6 +68,9 @@ export function buildApp({
   app.register(articlesRoutes)
   app.register(tagsRoutes)
   app.register(adminArticlesRoutes)
+  
+  // Après les routes de l'API : le site (fichiers statiques + index.html) ne passe qu'après elles.
+  if (clientDir) app.register(clientPlugin, { clientDir })
 
   if (nodeEnv === 'test') {
     app.get('/api/_boom', async () => {

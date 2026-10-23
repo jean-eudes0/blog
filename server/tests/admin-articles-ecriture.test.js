@@ -121,6 +121,20 @@ test('un caractère NUL est refusé en 400 à la création, pas en 500', async (
   assert.equal(await compter('articles'), 0)
 })
 
+test('coverUrl : seul https:// est accepté (http://, javascript:, data:, ftp: et adresse sans protocole : 400)', async () => {
+  const { cookie } = await connecter()
+  for (const coverUrl of ['http://exemple.com/a.jpg', 'javascript:alert(1)', 'data:text/html,x', 'ftp://exemple.com/a.jpg', 'exemple.com/a.jpg']) {
+    const res = await requete('POST', '/api/admin/articles', { cookie, payload: { title: 'T', contentMd: '# a', coverUrl } })
+    assert.equal(res.statusCode, 400, coverUrl)
+    assert.equal(res.json().error.code, 'VALIDATION_ERROR')
+  }
+  assert.equal(await compter('articles'), 0)
+
+  const ok = await requete('POST', '/api/admin/articles', { cookie, payload: { title: 'T', contentMd: '# a', coverUrl: 'https://exemple.com/a.jpg' } })
+  assert.equal(ok.statusCode, 201)
+  assert.equal(ok.json().coverUrl, 'https://exemple.com/a.jpg')
+})
+
 // ---------- PATCH ----------
 
 test('PATCH ne modifie que les champs envoyés et met updated_at à jour', async () => {
@@ -209,6 +223,7 @@ test('PATCH refuse un corps vide, les champs interdits et les valeurs invalides 
     { coverUrl: 'javascript:alert(1)' },
     { tags: ['a', 'b', 'c', 'd', 'e', 'f'] },
     { title: 'a\u0000b' },
+    { coverUrl: 'http://exemple.com/a.jpg' },
   ]
   for (const corps of mauvais) {
     const res = await modifier(cree.id, corps, { cookie })

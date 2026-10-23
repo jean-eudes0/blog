@@ -80,8 +80,9 @@ export function validerArticle(valeurs) {
   if (longueur(corps.excerpt) > LIMITES.extrait) erreurs.excerpt = `L’extrait fait au plus ${LIMITES.extrait} caractères.`
 
   if (corps.coverUrl !== null) {
-    // http(s) seulement : une adresse « javascript: » dans une image ou un lien serait une faille XSS.
-    if (!/^https?:\/\/\S+$/.test(corps.coverUrl)) erreurs.coverUrl = 'Adresse invalide : elle doit commencer par http:// ou https://.'
+    // https seulement : une adresse « javascript: » dans une image serait une faille XSS, et un navigateur
+    // bloque de toute façon une image en http:// affichée sur un site en https://.
+    if (!/^https:\/\/\S+$/.test(corps.coverUrl)) erreurs.coverUrl = 'Adresse invalide : elle doit commencer par https://.'
     else if (longueur(corps.coverUrl) > LIMITES.url) erreurs.coverUrl = `L’adresse fait au plus ${LIMITES.url} caractères.`
   }
 
