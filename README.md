@@ -96,6 +96,7 @@ $p = [System.Net.NetworkCredential]::new("", $s).Password
 "$p`n$p" | npm run reset-password -- moi@exemple.com
 Remove-Variable p, s
 ```
+Site complet sur un seul port : `npm run build`  dans `client`, puis `npm start` dans `server` ; le serveur sert alors l’API et le site sur `http://localhost:3000`.
 
 ### Variables d'environnement
 
@@ -123,6 +124,11 @@ temps en temps et à comparer avec la valeur dans Render.
 
 Vérification : provoquer un échec de connexion sur le site, puis lire `"ip"` dans les
 journaux Render. Ce doit être ton adresse publique, jamais une adresse Cloudflare (`172.64.` à `172.71.`).
+
+Le serveur sert aussi le site : Render doit construire le client avant de démarrer.
+Root Directory : `server`
+Build Command : `npm ci --include=dev --prefix ../client && npm run build --prefix ../client && npm ci`
+`--include=dev` est nécessaire : Render définit NODE_ENV=production, et sans cela `vite` n'est pas installé.
 
 ### Créer ou réinitialiser le compte admin en production
 
